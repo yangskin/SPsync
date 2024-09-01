@@ -76,17 +76,21 @@ class ue_sync_camera(QtCore.QObject):
                 time.sleep(0.033333)
 
     def _execute_ue_command(self, command):
-        remote_exec = remote_execution.RemoteExecution()
-        remote_exec.start()
-        
+
+        _remote_exec = remote_execution.RemoteExecution()
+        _remote_exec.start()
+
         try :
-            remote_exec.open_command_connection(remote_exec.remote_nodes)
-            rec = remote_exec.run_command(command, exec_mode='ExecuteFile')
+            _remote_exec.open_command_connection(_remote_exec.remote_nodes)
+            rec = _remote_exec.run_command(command, exec_mode='ExecuteFile')
             if rec['success'] == True:
                 return rec['result']
             
+            _remote_exec.stop()
+
         except :
             self.thread_loop_type.set()
+            _remote_exec.stop()
             self.sync_error.emit("sync_error")
 
 class ue_sync:
@@ -151,10 +155,12 @@ class ue_sync:
             rec = remote_exec.run_command(command, exec_mode='ExecuteFile')
             if rec['success'] == True:
                 return rec['result']
-            
+            remote_exec.stop()
         except :
             self._show_help_window()
             self._ui.auto_sync.setChecked(False)
+            
+            remote_exec.stop()
 
         if self.ue_sync_camera_type:
             self.sync_ue_camera_init()
