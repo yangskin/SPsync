@@ -52,6 +52,9 @@ class ue_sync_camera(QtCore.QObject):
     sync_error = QtCore.Signal(str)
     thread_loop_type:threading.Event = threading.Event()
 
+    _remote_exec = remote_execution.RemoteExecution()
+    
+
     def update(self):
         while not self.thread_loop_type.is_set():
             camera:substance_painter.display.Camera = None
@@ -77,20 +80,17 @@ class ue_sync_camera(QtCore.QObject):
 
     def _execute_ue_command(self, command):
 
-        _remote_exec = remote_execution.RemoteExecution()
-        _remote_exec.start()
+        if not self._remote_exec.has_command_connection():
+            self._remote_exec.start()
+            self._remote_exec.open_command_connection(self._remote_exec.remote_nodes)
 
         try :
-            _remote_exec.open_command_connection(_remote_exec.remote_nodes)
-            rec = _remote_exec.run_command(command, exec_mode='ExecuteFile')
+            rec = self._remote_exec.run_command(command, True, exec_mode='ExecuteFile')
             if rec['success'] == True:
                 return rec['result']
-            
-            _remote_exec.stop()
-
         except :
             self.thread_loop_type.set()
-            _remote_exec.stop()
+            self._remote_exec.stop()
             self.sync_error.emit("sync_error")
 
 class ue_sync:
