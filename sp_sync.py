@@ -3,8 +3,6 @@ import os
 import tempfile
 import shutil
 
-from . import remote_execution
-
 import substance_painter.export
 import substance_painter.textureset
 import substance_painter.resource
@@ -20,33 +18,11 @@ from PySide2 import QtGui
 from PySide2 import QtCore
 from PySide2.QtGui import QPixmap
 
+from . sp_sync_ue import ue_sync
+
 # 载入UI描述
 from . sp_sync_ui import Ui_SPsync
 
-class ImageDialog(QtWidgets.QDialog):
-    def __init__(self, image_path, message:str, parent = None):
-        super().__init__(parent)
-        self.setWindowTitle("提示")
-        
-        layout = QtWidgets.QVBoxLayout()
-        lable = QtWidgets.QLabel(message, self)
-        layout.addWidget(lable)
-
-        self.image_label = QtWidgets.QLabel(self)
-        pixmap = QPixmap(image_path)
-        self.image_label.setPixmap(pixmap.scaled(400, 667))
-        layout.addWidget(self.image_label)
-
-        button = QtWidgets.QPushButton("确认", self)
-        button.clicked.connect(self._colse)
-        layout.addWidget(button)
-
-        self.setLayout(layout)
-        self.setFixedSize(425, 760)
-
-    def _colse(self):
-        self.close()
-  
 class sp_sync:
     """读取配置文件,在UI中生成对应按钮。点击按钮后,对Shader传入对应参数。"""
 
@@ -56,10 +32,11 @@ class sp_sync:
     _root_path: str = ""
     _temp_path: str = ""
     _origin_export_path: str = ""
-    _to_ue_code: str = ""
     _current_preset:substance_painter.export.ResourceExportPreset = None
     _export_sync_button_type:bool = False
 
+    _sp_sync_ue:ue_sync
+   
     def __init__(self):
         """
         初始化 读取配置文件 并配置UI
@@ -76,6 +53,8 @@ class sp_sync:
         os.makedirs(self._temp_path)
 
         self._config_ui()
+
+        self._sp_sync_ue = ue_sync(self._ui, self._main_widget)
         
         #绑定贴图导出事件
         substance_painter.event.DISPATCHER.connect(
@@ -93,86 +72,12 @@ class sp_sync:
         self._project_about_to_close_event
         )
 
-        #读取导入ue贴图脚本
-        with open(self._root_path + "\\import_textures_ue.py", "r") as f:
-            self._to_ue_code = f.read()
-
-    def _show_help_window(self):
-        image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "端口链接失败,检查UE中相关设置!", self._main_widget)
-        image_dialog.exec_()
-
     def _clean_temp_folder(self):
         """
         清理临时文件夹
         """
         if os.path.exists(self._temp_path):
             shutil.rmtree(self._temp_path)
-
-    def _project_about_to_close_event(self, state):
-        self._ui.file_path.setText("")
-        self._ui.select_preset.clear()
-        self._clean_temp_folder()
-
-    def _execute_ue_command(self, command):
-        remote_exec = remote_execution.RemoteExecution()
-        remote_exec.start()
-
-        try :
-            remote_exec.open_command_connection(remote_exec.remote_nodes)
-            exec_mode = 'ExecuteFile'
-            rec = remote_exec.run_command(command, exec_mode=exec_mode)
-            if rec['success'] == True:
-                return rec['result']
-            
-        except :
-            #如果链接失败关闭自动同步选项
-            self._ui.auto_sync.setChecked(False)
-            #QtWidgets.QMessageBox.warning(self._main_widget, "警告", "端口链接失败,检查UE及SP中相关设置!")
-            self._show_help_window()
-        
-    def _sync_ue_textures(self, target_path: str, exportFileList:list):
-        """
-        同步列表中的贴图到UE中
-        """
-
-        current_to_ue_code: str = self._to_ue_code
-        current_to_ue_code = current_to_ue_code.replace('FOLDER_PATH', target_path)
-        exportFileListStr = ''
-
-        for file in exportFileList:
-            exportFileListStr += "  '"+ file + "',\n"
-        current_to_ue_code = current_to_ue_code.replace('EXPORT_TEXTURE_PATH', exportFileListStr)
-
-        self._execute_ue_command(current_to_ue_code)
-
-    
-    def _export_end_event(self, export_data:substance_painter.event.ExportTexturesEnded):
-
-        if self._ui.auto_sync.isChecked() or self._export_sync_button_type:
-            self._export_sync_button_type = False
-
-            if self._ui.file_path.text() == "":
-                QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定引擎中的输出路径!")
-                return
-            
-            export_file_list = []
-
-            for item in export_data.textures:
-                for file in export_data.textures[item]:
-                    export_file_list.append(file)
-
-            self._sync_ue_textures(self._ui.file_path.text(), export_file_list)
-            
-
-    def _select_file_button_click(self):
-        #打开文件选择对话框
-        file_path: str = QtWidgets.QFileDialog.getExistingDirectory(self._main_widget, "打开", self._origin_export_path, QtWidgets.QFileDialog.Option.ShowDirsOnly)
-        if "Content" in file_path:
-            self._origin_export_path = file_path
-            self._ui.file_path.setText( "/" + file_path[file_path.find("Content"):].replace("Content", "Game") )
-            self._save_data()
-        else:
-            QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要选择Content文件夹下的目录!")
 
     def _project_open_event(self, state):
         """
@@ -191,6 +96,44 @@ class sp_sync:
         self._wait_ShelfCrawlingEnded_loade_export_presets
         )
 
+        if self._ui.view_sync.isChecked():
+            self._sp_sync_ue.sync_ue_camera_init()
+        
+    def _project_about_to_close_event(self, state):
+
+        self._ui.file_path.setText("")
+        self._ui.select_preset.clear()
+        self._clean_temp_folder()
+
+        self._sp_sync_ue.close_ue_sync_camera()
+        
+    def _export_end_event(self, export_data:substance_painter.event.ExportTexturesEnded):
+
+        if self._ui.auto_sync.isChecked() or self._export_sync_button_type:
+            self._export_sync_button_type = False
+
+            if self._ui.file_path.text() == "":
+                QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定引擎中的输出路径!")
+                return
+            
+            export_file_list = []
+
+            for item in export_data.textures:
+                for file in export_data.textures[item]:
+                    export_file_list.append(file)
+
+            self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
+            
+
+    def _select_file_button_click(self):
+        #打开文件选择对话框
+        file_path: str = QtWidgets.QFileDialog.getExistingDirectory(self._main_widget, "打开", self._origin_export_path, QtWidgets.QFileDialog.Option.ShowDirsOnly)
+        if "Content" in file_path:
+            self._origin_export_path = file_path
+            self._ui.file_path.setText( "/" + file_path[file_path.find("Content"):].replace("Content", "Game") )
+            self._save_data()
+        else:
+            QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要选择Content文件夹下的目录!")
 
     def _wait_ShelfCrawlingEnded_loade_export_presets(self, state):
         if state.shelf_name == "your_assets":
@@ -297,6 +240,12 @@ class sp_sync:
         for preset in substance_painter.export.list_resource_export_presets(): 
             if self._ui.select_preset.currentText() == preset.resource_id.name:
                 self._current_preset = preset
+
+    def _view_sync_check(self, state = None):
+        if state:
+            if substance_painter.project.is_open():
+                self._sp_sync_ue.sync_ue_camera_init()
+        pass
      
     def _config_ui(self):
         """
@@ -316,6 +265,8 @@ class sp_sync:
 
         #绑定列表选中事件
         self._ui.select_preset.highlighted.connect(self._select_preset_changed)
+
+        self._ui.view_sync.stateChanged.connect(self._view_sync_check)
 
         self.plugin_widgets.append(self._main_widget)
         substance_painter.ui.add_dock_widget(self._main_widget)

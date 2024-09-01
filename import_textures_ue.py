@@ -14,3 +14,5 @@ for path in paths:
     importTask.automated = True
     assetTools = unreal.AssetToolsHelpers.get_asset_tools()
     assetTools.import_asset_tasks([importTask])
+
+

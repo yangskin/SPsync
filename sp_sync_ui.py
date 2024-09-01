@@ -56,6 +56,11 @@ class Ui_SPsync(object):
 
         self.verticalLayout_2.addWidget(self.sync_button)
 
+        self.view_sync = QCheckBox(SPsync)
+        self.view_sync.setObjectName(u"view_sync")
+
+        self.verticalLayout_2.addWidget(self.view_sync)
+
         self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
 
         self.verticalLayout_2.addItem(self.verticalSpacer)
@@ -76,5 +81,6 @@ class Ui_SPsync(object):
 
         self.auto_sync.setText(QCoreApplication.translate("SPsync", u"\u8f93\u51fa\u8d34\u56fe\u81ea\u52a8\u540c\u6b65\u5230\u5f15\u64ce", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
+        self.view_sync.setText(QCoreApplication.translate("SPsync", u"\u89c6\u53e3\u540c\u6b65", None))
     # retranslateUi
 
