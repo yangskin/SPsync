@@ -1,8 +1,13 @@
 import unreal
 
 def find_camera_by_name(camera_name:str):
-    actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-    actors:unreal.Array = actor_subsystem.get_all_level_actors()
+
+    world = unreal.EditorLevelLibrary.get_editor_world()
+    actors = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.CameraActor)
+
+    #actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    #actors:unreal.Array = actor_subsystem.get_all_level_actors()
+
     for actor in actors:
         if camera_name in actor.get_actor_label():
             return actor
@@ -14,7 +19,7 @@ def create_and_activate_camera(camera_name, location=unreal.Vector(0, 0, 300), r
     if existing_camera:
         return existing_camera
 
-    camera_actor = unreal.EditorLevelLibrary.spawn_actor_from_class(unreal.CameraActor, location, rotation)
+    camera_actor = unreal.EditorLevelLibrary.spawn_actor_from_class(unreal.CameraActor, location, rotation, True)
     camera_actor.set_actor_label(camera_name)
     unreal.EditorLevelLibrary.pilot_level_actor(camera_actor)
     return camera_actor

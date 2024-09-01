@@ -73,7 +73,7 @@ class ue_sync_camera(QtCore.QObject):
                 code = code.replace('FOV', str(camera.field_of_view))
 
                 self._execute_ue_command(code)
-                time.sleep(0.1)
+                time.sleep(0.033333)
 
     def _execute_ue_command(self, command):
         remote_exec = remote_execution.RemoteExecution()
@@ -135,16 +135,14 @@ class ue_sync:
             exportFileListStr += "  '"+ file + "',\n"
         current_to_ue_code = current_to_ue_code.replace('EXPORT_TEXTURE_PATH', exportFileListStr)
 
+        self._execute_ue_command(current_to_ue_code)
+
+    def _execute_ue_command(self, command):
+
         if self.ue_sync_camera_type:
             self._ue_sync_camera.thread_loop_type.set()
             self._ue_sync_camera_thread.join()
 
-        self._execute_ue_command(current_to_ue_code)
-
-        if self.ue_sync_camera_type:
-            self.sync_ue_camera_init()
-
-    def _execute_ue_command(self, command):
         remote_exec = remote_execution.RemoteExecution()
         remote_exec.start()
         
@@ -157,6 +155,9 @@ class ue_sync:
         except :
             self._show_help_window()
             self._ui.auto_sync.setChecked(False)
+
+        if self.ue_sync_camera_type:
+            self.sync_ue_camera_init()
 
     def close_ue_sync_camera(self):
         self._ue_sync_camera.thread_loop_type.set()

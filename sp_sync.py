@@ -245,7 +245,8 @@ class sp_sync:
         if state:
             if substance_painter.project.is_open():
                 self._sp_sync_ue.sync_ue_camera_init()
-        pass
+        else:
+            self._sp_sync_ue.close_ue_sync_camera()
      
     def _config_ui(self):
         """
