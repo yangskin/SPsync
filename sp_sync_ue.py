@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
-import tempfile
-import shutil
 import threading
 import time
+import queue
 
 from . import remote_execution
 
@@ -47,13 +46,76 @@ class ImageDialog(QtWidgets.QDialog):
     def _colse(self):
         self.close()
 
+class ue_sync_command():
+    code:str
+    error_fun:callable
+
+    def __init__(self, code:str, error_fun:callable):
+        self.code = code
+        self.error_fun = error_fun
+    
+class ue_sync_remote(QtCore.QObject):
+
+    _command_queue:queue.Queue
+    _thread:threading.Thread
+    _lock:threading.Lock
+    thread_loop_type:threading.Event = threading.Event()
+    _remote_exec:remote_execution.RemoteExecution = remote_execution.RemoteExecution()
+
+    def __init__(self):
+        self._command_queue = queue.Queue()
+        self._thread = None
+        self._lock = threading.Lock()
+
+    def _worker(self):
+        while True:
+            try:
+                if not self._remote_exec.has_command_connection():
+                    self._remote_exec.start()
+                    self._remote_exec.open_command_connection(self._remote_exec.remote_nodes)
+
+                command = self._command_queue.get(True, 0.3333)
+
+                try :
+                    rec = self._remote_exec.run_command(command.code, True, exec_mode='ExecuteFile')
+                    #if rec['success'] == True:
+                    #    return rec['result']
+                except :
+                    command.error_fun()
+                    self._remote_exec.stop()
+                    pass
+
+                self._command_queue.task_done()
+
+            except queue.Empty:
+                with self._lock:
+                    if self._command_queue.empty():
+                        self._thread = None
+                        break
+
+    def add_command(self, command:ue_sync_command):
+        with self._lock:
+            self._command_queue.put(command, True)
+            if self._thread is None:
+                self._thread = threading.Thread(target=self._worker, daemon=True)
+                self._thread.start()
+
+    def stop(self):
+        with self._lock:
+            if self._thread is not None:
+                self._thread.join()
+                self._thread = None
+
+
 class ue_sync_camera(QtCore.QObject):
+    _ue_sync_remote:ue_sync_remote
     _sync_camera_code:str = ""
     sync_error = QtCore.Signal(str)
     thread_loop_type:threading.Event = threading.Event()
-
-    _remote_exec = remote_execution.RemoteExecution()
     
+    def __init__(self, ue_sync_remote_instance:ue_sync_remote):
+        super().__init__()
+        self._ue_sync_remote = ue_sync_remote_instance
 
     def update(self):
         while not self.thread_loop_type.is_set():
@@ -75,25 +137,11 @@ class ue_sync_camera(QtCore.QObject):
 
                 code = code.replace('FOV', str(camera.field_of_view))
 
-                self._execute_ue_command(code)
+                #self._execute_ue_command(code)
+                self._ue_sync_remote.add_command(ue_sync_command(code, lambda: self.sync_error.emit("sync_error")))
                 time.sleep(0.033333)
 
-    def _execute_ue_command(self, command):
-
-        if not self._remote_exec.has_command_connection():
-            self._remote_exec.start()
-            self._remote_exec.open_command_connection(self._remote_exec.remote_nodes)
-
-        try :
-            rec = self._remote_exec.run_command(command, True, exec_mode='ExecuteFile')
-            if rec['success'] == True:
-                return rec['result']
-        except :
-            self.thread_loop_type.set()
-            self._remote_exec.stop()
-            self.sync_error.emit("sync_error")
-
-class ue_sync:
+class ue_sync(QtCore.QObject):
 
     _ui: Ui_SPsync
     _main_widget:QtWidgets.QWidget
@@ -102,10 +150,12 @@ class ue_sync:
     _sync_camera_code:str = ""
     _ue_sync_camera:ue_sync_camera
     _ue_sync_camera_thread:threading.Thread = None
+    _ue_sync_remote:ue_sync_remote = ue_sync_remote()
     ue_sync_camera_type:bool = False
+    sync_error = QtCore.Signal(str)
     
     def __init__(self, ui: Ui_SPsync, main_widget:QtWidgets.QWidget) -> None:
-
+        super().__init__()
         self._ui = ui
         self._main_widget = main_widget
         self._root_path = os.path.dirname(__file__)
@@ -117,9 +167,10 @@ class ue_sync:
         with open(self._root_path + "\\sync_camera_ue.py", "r") as f:
             self._sync_camera_code = f.read()
 
-        self._ue_sync_camera = ue_sync_camera()
+        self._ue_sync_camera = ue_sync_camera(self._ue_sync_remote)
         self._ue_sync_camera._sync_camera_code = self._sync_camera_code
 
+        self.sync_error.connect(self.ue_sync_textures_error)
         pass
 
     def _show_help_window(self):
@@ -139,31 +190,11 @@ class ue_sync:
             exportFileListStr += "  '"+ file + "',\n"
         current_to_ue_code = current_to_ue_code.replace('EXPORT_TEXTURE_PATH', exportFileListStr)
 
-        self._execute_ue_command(current_to_ue_code)
+        self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
 
-    def _execute_ue_command(self, command):
-
-        if self.ue_sync_camera_type:
-            self._ue_sync_camera.thread_loop_type.set()
-            self._ue_sync_camera_thread.join()
-
-        remote_exec = remote_execution.RemoteExecution()
-        remote_exec.start()
-        
-        try :
-            remote_exec.open_command_connection(remote_exec.remote_nodes)
-            rec = remote_exec.run_command(command, exec_mode='ExecuteFile')
-            if rec['success'] == True:
-                return rec['result']
-            remote_exec.stop()
-        except :
-            self._show_help_window()
-            self._ui.auto_sync.setChecked(False)
-            
-            remote_exec.stop()
-
-        if self.ue_sync_camera_type:
-            self.sync_ue_camera_init()
+    def ue_sync_textures_error(self):
+        self._show_help_window() 
+        self._ui.auto_sync.setChecked(False)
 
     def close_ue_sync_camera(self):
         self._ue_sync_camera.thread_loop_type.set()
@@ -186,6 +217,5 @@ class ue_sync:
 
         self._ue_sync_camera_thread = threading.Thread(target=self._ue_sync_camera.update, daemon=True)
         self._ue_sync_camera_thread.start()
-
         pass
            
