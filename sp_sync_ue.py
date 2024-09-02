@@ -59,7 +59,6 @@ class ue_sync_remote(QtCore.QObject):
     _command_queue:queue.Queue
     _thread:threading.Thread
     _lock:threading.Lock
-    thread_loop_type:threading.Event = threading.Event()
     _remote_exec:remote_execution.RemoteExecution = remote_execution.RemoteExecution()
 
     def __init__(self):
