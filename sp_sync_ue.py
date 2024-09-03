@@ -73,7 +73,7 @@ class ue_sync_remote(QtCore.QObject):
                     self._remote_exec.start()
                     self._remote_exec.open_command_connection(self._remote_exec.remote_nodes)
 
-                command = self._command_queue.get(True, 0.3333)
+                command = self._command_queue.get(True, 0.1)
 
                 try :
                     rec = self._remote_exec.run_command(command.code, True, exec_mode='ExecuteFile')
@@ -94,7 +94,7 @@ class ue_sync_remote(QtCore.QObject):
 
     def add_command(self, command:ue_sync_command):
         with self._lock:
-            self._command_queue.put(command, True)
+            self._command_queue.put(command, True, 0.1)
             if self._thread is None:
                 self._thread = threading.Thread(target=self._worker, daemon=True)
                 self._thread.start()
