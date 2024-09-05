@@ -56,6 +56,8 @@ def create_material_instance(parent_material:unreal.Material, path:str)->unreal.
             material_instance.set_editor_property("parent", parent_material)
             unreal.EditorAssetLibrary.save_asset(path)
 
-create_material_instance(create_material("/Game/Sphere/M_Base"), "/Game/Sphere/MI_Base")
+def get_material(path:str):
+    material = create_material(path[0:path.rfind("/")] + "/M_Base")
+    return create_material_instance(material, path)
 
-
+get_material("/Game/Sphere/MI_testtest")

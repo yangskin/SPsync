@@ -86,6 +86,10 @@ class sp_sync:
 
         self._current_preset = None
 
+        #读取默认输出预设
+        substance_painter.resource.import_session_resource(self._root_path + "/assets/export-presets/SPSYNCDefault.spexp", 
+                                                           substance_painter.resource.Usage.EXPORT)
+
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectEditionEntered,
         self._wait_ProjectEditionEntered_loade_export_presets
@@ -158,7 +162,7 @@ class sp_sync:
         self._ui.select_preset.clear()
 
         resource_presets_list:list[substance_painter.export.ResourceExportPreset] = substance_painter.export.list_resource_export_presets()
-
+        
         for preset in resource_presets_list: 
             self._ui.select_preset.addItem(preset.resource_id.name)
 
@@ -178,7 +182,7 @@ class sp_sync:
                     if self._ui.select_preset.currentText() == preset.resource_id.name:
                         self._current_preset = preset
                         self._save_data()
-                    
+
     def _sync_button_click(self):
 
         if self._current_preset == None:
@@ -195,11 +199,11 @@ class sp_sync:
             "name": self._current_preset.resource_id.name,
             "maps": self._current_preset.list_output_maps()
         }
-
+      
         export_config = {
             "exportShaderParams": False,
             "exportPath": self._temp_path,
-            "defaultExportPreset" : self._current_preset.resource_id.name,
+            "defaultExportPreset" : newPreset["name"],
             "exportPresets": [newPreset],
             "exportList": export_list,
             "exportParameters": [
@@ -222,7 +226,6 @@ class sp_sync:
         metadata.set("origin_export_path", self._origin_export_path)
         metadata.set("current_preset", self._ui.select_preset.currentText())
 
-
     def _load_data(self):
         """
         读取配置
@@ -236,10 +239,10 @@ class sp_sync:
         for i in range(self._ui.select_preset.count()):
             if self._ui.select_preset.itemText(i) == current_preset:
                 self._ui.select_preset.setCurrentIndex(i)
-                
-        for preset in substance_painter.export.list_resource_export_presets(): 
-            if self._ui.select_preset.currentText() == preset.resource_id.name:
-                self._current_preset = preset
+   
+            for preset in substance_painter.export.list_resource_export_presets(): 
+                if self._ui.select_preset.currentText() == preset.resource_id.name:
+                    self._current_preset = preset
 
     def _view_sync_check(self, state = None):
         if state:
