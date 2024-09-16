@@ -2,6 +2,7 @@
 import os
 import tempfile
 import shutil
+from typing import List
 
 import substance_painter.export
 import substance_painter.textureset
@@ -86,10 +87,6 @@ class sp_sync:
 
         self._current_preset = None
 
-        #读取默认输出预设
-        substance_painter.resource.import_session_resource(self._root_path + "/assets/export-presets/SPSYNCDefault.spexp", 
-                                                           substance_painter.resource.Usage.EXPORT)
-
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectEditionEntered,
         self._wait_ProjectEditionEntered_loade_export_presets
@@ -121,15 +118,18 @@ class sp_sync:
                 return
             
             export_file_list = []
-
             for item in export_data.textures:
                 for file in export_data.textures[item]:
                     export_file_list.append(file)
 
-            self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
+            self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list, self._get_texture_sets())
             
 
     def _select_file_button_click(self):
+        
+        if not substance_painter.project.is_open():
+            return
+        
         #打开文件选择对话框
         file_path: str = QtWidgets.QFileDialog.getExistingDirectory(self._main_widget, "打开", self._origin_export_path, QtWidgets.QFileDialog.Option.ShowDirsOnly)
         if "Content" in file_path:
@@ -140,8 +140,7 @@ class sp_sync:
             QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要选择Content文件夹下的目录!")
 
     def _wait_ShelfCrawlingEnded_loade_export_presets(self, state):
-        if state.shelf_name == "your_assets":
-            self._loade_export_presets()
+        self._loade_export_presets()
 
     def _wait_ProjectEditionEntered_loade_export_presets(self, state):
 
@@ -158,11 +157,19 @@ class sp_sync:
         读取导出预设 并绑定到UI
         """
 
+        if not substance_painter.project.is_open():
+            return
+        
         #清空列表
         self._ui.select_preset.clear()
 
+        #读取默认输出预设
+        substance_painter.resource.import_session_resource(self._root_path + "/assets/export-presets/SPSYNCDefault.spexp", 
+                                                           substance_painter.resource.Usage.EXPORT)
+
         resource_presets_list:list[substance_painter.export.ResourceExportPreset] = substance_painter.export.list_resource_export_presets()
-        
+        resource_presets_list.sort(key=lambda x: x.resource_id.name != "SPSYNCDefault")
+
         for preset in resource_presets_list: 
             self._ui.select_preset.addItem(preset.resource_id.name)
 
@@ -170,6 +177,10 @@ class sp_sync:
         self._load_data()
 
     def _select_preset_changed(self, index:int):
+
+        if not substance_painter.project.is_open():
+            return
+        
         """
         预设导出绑定事件
         """
@@ -183,11 +194,26 @@ class sp_sync:
                         self._current_preset = preset
                         self._save_data()
 
+    def _get_texture_sets(self)->List[str]:
+        """
+        获取材质名列表
+        """
+        
+        export_list = []
+        for texture_set in substance_painter.textureset.all_texture_sets():
+            export_list.append(texture_set.name())
+        return export_list
+
     def _sync_button_click(self):
 
+        if not substance_painter.project.is_open():
+            return
+        
         if self._current_preset == None:
             QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定贴图输出配置!")
             return
+        
+        self._ui.sync_button.setEnabled(False)
             
         self._export_sync_button_type = True
 
@@ -216,6 +242,23 @@ class sp_sync:
             }
 
         substance_painter.export.export_project_textures(export_config)
+    
+    def _sync_button_mesh_click(self):
+
+        if not substance_painter.project.is_open():
+            return
+        
+        if self._current_preset == None:
+            QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定贴图输出配置!")
+            return
+
+        self._ui.sync_mesh_button.setEnabled(False)
+
+        self._sync_button_click()
+
+        export_path = self._temp_path + "/" + substance_painter.project.name() + ".fbx"
+        request = substance_painter.export.export_mesh(export_path, substance_painter.export.MeshExportOption.TriangulatedMesh)
+        self._sp_sync_ue.ue_import_mesh(self._ui.file_path.text(), export_path)
 
     def _save_data(self):
         """
@@ -271,6 +314,8 @@ class sp_sync:
         self._ui.select_preset.highlighted.connect(self._select_preset_changed)
 
         self._ui.view_sync.stateChanged.connect(self._view_sync_check)
+
+        self._ui.sync_mesh_button.clicked.connect(self._sync_button_mesh_click)
 
         self.plugin_widgets.append(self._main_widget)
         substance_painter.ui.add_dock_widget(self._main_widget)

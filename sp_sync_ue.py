@@ -3,6 +3,7 @@ import os
 import threading
 import time
 import queue
+from typing import List
 
 from . import remote_execution
 
@@ -49,10 +50,14 @@ class ImageDialog(QtWidgets.QDialog):
 class ue_sync_command():
     code:str
     error_fun:callable
+    call_back_fun:callable
+    model:str
 
-    def __init__(self, code:str, error_fun:callable):
+    def __init__(self, code:str, error_fun:callable, call_back_fun:callable = None, model:str = remote_execution.MODE_EXEC_FILE):
         self.code = code
         self.error_fun = error_fun
+        self.call_back_fun = call_back_fun
+        self.model = model
     
 class ue_sync_remote(QtCore.QObject):
 
@@ -67,23 +72,27 @@ class ue_sync_remote(QtCore.QObject):
         self._lock = threading.Lock()
 
     def _worker(self):
+
         while True:
             try:
                 if not self._remote_exec.has_command_connection():
                     self._remote_exec.start()
                     self._remote_exec.open_command_connection(self._remote_exec.remote_nodes)
 
-                command = self._command_queue.get(True, 0.1)
+                command = self._command_queue.get(True)
 
                 try :
-                    rec = self._remote_exec.run_command(command.code, True, exec_mode='ExecuteFile')
-                    #if rec['success'] == True:
-                    #    return rec['result']
-                except :
+                    rec = self._remote_exec.run_command(command.code, True, command.model)
+                    if rec['success'] == True:
+                        if command.call_back_fun != None:
+                            command.call_back_fun(rec['result'])
+
+                except Exception as e:
+                    print(e)
                     command.error_fun()
                     self._remote_exec.stop()
                     pass
-
+                
                 self._command_queue.task_done()
 
             except queue.Empty:
@@ -94,10 +103,24 @@ class ue_sync_remote(QtCore.QObject):
 
     def add_command(self, command:ue_sync_command):
         with self._lock:
-            self._command_queue.put(command, True, 0.1)
+            self._command_queue.put(command, True)
             if self._thread is None:
                 self._thread = threading.Thread(target=self._worker, daemon=True)
                 self._thread.start()
+
+    def run_command(self, command:ue_sync_command):
+        remote = remote_execution.RemoteExecution()
+        remote.start()
+        remote.open_command_connection(remote.remote_nodes)
+        try :
+            rec = remote.run_command(command.code, True, exec_mode='ExecuteFile')
+            if rec['success'] == True:
+                remote.stop()
+                return rec['result']
+        except Exception as e:
+            command.error_fun()
+            remote.stop()
+            pass
 
     def stop(self):
         with self._lock:
@@ -147,6 +170,10 @@ class ue_sync(QtCore.QObject):
     _root_path: str = ""
     _to_ue_code: str = ""
     _sync_camera_code:str = ""
+    _material_ue_code:str = ""
+    _material_instance_ue_code:str = ""
+    _create_material_and_connect_textures_code:str = ""
+    _import_mesh_ue_code:str = ""
     _ue_sync_camera:ue_sync_camera
     _ue_sync_camera_thread:threading.Thread = None
     _ue_sync_remote:ue_sync_remote = ue_sync_remote()
@@ -166,6 +193,18 @@ class ue_sync(QtCore.QObject):
         with open(self._root_path + "\\sync_camera_ue.py", "r") as f:
             self._sync_camera_code = f.read()
 
+        with open(self._root_path + "\\material_ue.py", "r") as f:
+            self._material_ue_code = f.read()
+
+        with open(self._root_path + "\\material_instance_ue.py", "r") as f:
+            self._material_instance_ue_code = f.read()
+        
+        with open(self._root_path + "\\create_material_and_connect_textures.py", "r") as f:
+            self._create_material_and_connect_textures_code = f.read()
+
+        with open(self._root_path + "\\import_mesh_ue.py", "r") as f:
+            self._import_mesh_ue_code = f.read()
+        
         self._ue_sync_camera = ue_sync_camera(self._ue_sync_remote)
         self._ue_sync_camera._sync_camera_code = self._sync_camera_code
 
@@ -176,24 +215,63 @@ class ue_sync(QtCore.QObject):
         image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "端口链接失败,检查UE中相关设置!", self._main_widget)
         image_dialog.exec_()
 
-    def sync_ue_textures(self, target_path: str, exportFileList:list):
+    def sync_ue_textures(self, target_path: str, export_file_list:list, material_names:List[str]):
         """
         同步列表中的贴图到UE中
         """
-
         current_to_ue_code: str = self._to_ue_code
         current_to_ue_code = current_to_ue_code.replace('FOLDER_PATH', target_path)
-        exportFileListStr = ''
+        exportFileListStr = ""
 
-        for file in exportFileList:
+        for file in export_file_list:
             exportFileListStr += "  '"+ file + "',\n"
         current_to_ue_code = current_to_ue_code.replace('EXPORT_TEXTURE_PATH', exportFileListStr)
 
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
+        self.sync_ue_create_material_and_connect_textures(target_path, material_names)
+        
+    def sync_ue_create_material_and_connect_textures(self, target_path, material_names:List[str]):
+        self._ue_sync_remote.add_command(ue_sync_command(self._material_ue_code, lambda: self.sync_error.emit("sync_error")))
+        self._ue_sync_remote.add_command(ue_sync_command(self._material_instance_ue_code, lambda: self.sync_error.emit("sync_error")))
+
+        current_to_ue_code:str = self._create_material_and_connect_textures_code
+        current_to_ue_code = current_to_ue_code.replace('TARGET_PATH', target_path)
+        material_names_str = ""
+        for material_name in material_names:
+            material_names_str += "  '"+ material_name + "',\n"
+        current_to_ue_code = current_to_ue_code.replace('MATERIAL_NAMES', material_names_str)
+
+        self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
+
+        self._ue_sync_remote.add_command(ue_sync_command("create_material_and_connect_texture()", 
+                                                         lambda: self.sync_error.emit("sync_error"), 
+                                                         self.ue_sync_textures_request_event, 
+                                                         remote_execution.MODE_EVAL_STATEMENT))
+    
+    def ue_sync_textures_request_event(self, request):
+        if request:
+            self._ui.sync_button.setEnabled(True)
+
+    def ue_sync_mesh_textures_request_event(self, request):
+        if request:
+            self._ui.sync_button.setEnabled(True)
+            self._ui.sync_mesh_button.setEnabled(True)
 
     def ue_sync_textures_error(self):
         self._show_help_window() 
         self._ui.auto_sync.setChecked(False)
+
+    def ue_import_mesh(self, target_path:str, mesh_path:str):
+        current_to_ue_code = "import_mesh_and_swap('PATH', 'TARGET', 'NAME')"
+        current_to_ue_code = current_to_ue_code.replace('PATH', mesh_path)
+        current_to_ue_code = current_to_ue_code.replace('TARGET', target_path)
+        current_to_ue_code = current_to_ue_code.replace('NAME', mesh_path[mesh_path.rfind("/") + 1 :mesh_path.rfind(".")])
+
+        self._ue_sync_remote.add_command(ue_sync_command(self._import_mesh_ue_code, lambda: self.sync_error.emit("sync_error")))
+        self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, 
+                                                         lambda: self.sync_error.emit("sync_error"), 
+                                                         self.ue_sync_mesh_textures_request_event, 
+                                                         remote_execution.MODE_EVAL_STATEMENT))
 
     def close_ue_sync_camera(self):
         self._ue_sync_camera.thread_loop_type.set()

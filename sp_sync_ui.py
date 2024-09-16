@@ -18,7 +18,7 @@ class Ui_SPsync(object):
         if not SPsync.objectName():
             SPsync.setObjectName(u"SPsync")
         SPsync.setEnabled(True)
-        SPsync.resize(366, 158)
+        SPsync.resize(366, 176)
         self.verticalLayout = QVBoxLayout(SPsync)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.verticalLayout_2 = QVBoxLayout()
@@ -56,6 +56,11 @@ class Ui_SPsync(object):
 
         self.verticalLayout_2.addWidget(self.sync_button)
 
+        self.sync_mesh_button = QPushButton(SPsync)
+        self.sync_mesh_button.setObjectName(u"sync_mesh_button")
+
+        self.verticalLayout_2.addWidget(self.sync_mesh_button)
+
         self.view_sync = QCheckBox(SPsync)
         self.view_sync.setObjectName(u"view_sync")
 
@@ -81,6 +86,7 @@ class Ui_SPsync(object):
 
         self.auto_sync.setText(QCoreApplication.translate("SPsync", u"\u8f93\u51fa\u8d34\u56fe\u81ea\u52a8\u540c\u6b65\u5230\u5f15\u64ce", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
+        self.sync_mesh_button.setText(QCoreApplication.translate("SPsync", u"SYNC(Mesh)", None))
         self.view_sync.setText(QCoreApplication.translate("SPsync", u"\u89c6\u53e3\u540c\u6b65", None))
     # retranslateUi
 
