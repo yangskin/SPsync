@@ -215,7 +215,7 @@ class ue_sync(QtCore.QObject):
         image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "端口链接失败,检查UE中相关设置!", self._main_widget)
         image_dialog.exec_()
 
-    def sync_ue_textures(self, target_path: str, export_file_list:list, material_names:List[str]):
+    def sync_ue_textures(self, target_path: str, export_file_list:list):
         """
         同步列表中的贴图到UE中
         """
@@ -228,7 +228,6 @@ class ue_sync(QtCore.QObject):
         current_to_ue_code = current_to_ue_code.replace('EXPORT_TEXTURE_PATH', exportFileListStr)
 
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
-        self.sync_ue_create_material_and_connect_textures(target_path, material_names)
         
     def sync_ue_create_material_and_connect_textures(self, target_path, material_names:List[str]):
         self._ue_sync_remote.add_command(ue_sync_command(self._material_ue_code, lambda: self.sync_error.emit("sync_error")))

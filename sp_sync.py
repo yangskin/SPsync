@@ -122,7 +122,9 @@ class sp_sync:
                 for file in export_data.textures[item]:
                     export_file_list.append(file)
 
-            self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list, self._get_texture_sets())
+            self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
+
+            self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._get_texture_sets())
             
 
     def _select_file_button_click(self):

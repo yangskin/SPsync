@@ -4,10 +4,7 @@ def find_camera_by_name(camera_name:str):
 
     world = unreal.EditorLevelLibrary.get_editor_world()
     actors = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.CameraActor)
-
-    #actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-    #actors:unreal.Array = actor_subsystem.get_all_level_actors()
-
+    
     for actor in actors:
         if camera_name in actor.get_actor_label():
             return actor
@@ -30,12 +27,23 @@ def maya_to_unreal_rotation(x, y, z):
 
 camera_actor:unreal.Actor = create_and_activate_camera("temp_camera")
 
+selected_actors = unreal.EditorLevelLibrary.get_selected_level_actors()
+
+
+root_transform:unreal.Transform = None 
+for actor in selected_actors:
+    root_transform = actor.get_actor_transform()
+
 positon:unreal.Vector = unreal.Vector(POS)
 positon = unreal.Vector(positon.z , -positon.x, positon.y)
 positon = unreal.Vector.multiply_float(positon, 100)
 rotator:unreal.Rotator = maya_to_unreal_rotation(ROTATE)
 
-camera_actor.set_actor_location_and_rotation(positon, rotator, False, False)
+if root_transform == None:
+    camera_actor.set_actor_location_and_rotation(positon, rotator, False, False)
+else:
+    camera_actor.set_actor_location_and_rotation(root_transform.transform_location(positon), root_transform.transform_rotation(rotator), False, False)
+
 camera_component = camera_actor.get_component_by_class(unreal.CameraComponent)
 if camera_component:
     camera_component.set_editor_property("constrain_aspect_ratio", False)
