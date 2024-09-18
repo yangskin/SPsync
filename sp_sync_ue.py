@@ -229,7 +229,7 @@ class ue_sync(QtCore.QObject):
 
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
         
-    def sync_ue_create_material_and_connect_textures(self, target_path, material_names:List[str]):
+    def sync_ue_create_material_and_connect_textures(self, target_path, material_names:List[str], callback:callable):
         self._ue_sync_remote.add_command(ue_sync_command(self._material_ue_code, lambda: self.sync_error.emit("sync_error")))
         self._ue_sync_remote.add_command(ue_sync_command(self._material_instance_ue_code, lambda: self.sync_error.emit("sync_error")))
 
@@ -244,23 +244,14 @@ class ue_sync(QtCore.QObject):
 
         self._ue_sync_remote.add_command(ue_sync_command("create_material_and_connect_texture()", 
                                                          lambda: self.sync_error.emit("sync_error"), 
-                                                         self.ue_sync_textures_request_event, 
+                                                         callback, 
                                                          remote_execution.MODE_EVAL_STATEMENT))
-    
-    def ue_sync_textures_request_event(self, request):
-        if request:
-            self._ui.sync_button.setEnabled(True)
-
-    def ue_sync_mesh_textures_request_event(self, request):
-        if request:
-            self._ui.sync_button.setEnabled(True)
-            self._ui.sync_mesh_button.setEnabled(True)
 
     def ue_sync_textures_error(self):
         self._show_help_window() 
         self._ui.auto_sync.setChecked(False)
 
-    def ue_import_mesh(self, target_path:str, mesh_path:str):
+    def ue_import_mesh(self, target_path:str, mesh_path:str, callback:callable):
         current_to_ue_code = "import_mesh_and_swap('PATH', 'TARGET', 'NAME')"
         current_to_ue_code = current_to_ue_code.replace('PATH', mesh_path)
         current_to_ue_code = current_to_ue_code.replace('TARGET', target_path)
@@ -269,7 +260,7 @@ class ue_sync(QtCore.QObject):
         self._ue_sync_remote.add_command(ue_sync_command(self._import_mesh_ue_code, lambda: self.sync_error.emit("sync_error")))
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, 
                                                          lambda: self.sync_error.emit("sync_error"), 
-                                                         self.ue_sync_mesh_textures_request_event, 
+                                                         callback, 
                                                          remote_execution.MODE_EVAL_STATEMENT))
 
     def close_ue_sync_camera(self):
