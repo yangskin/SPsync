@@ -35,6 +35,7 @@ class sp_sync:
     _origin_export_path: str = ""
     _current_preset:substance_painter.export.ResourceExportPreset = None
     _export_sync_button_type:bool = False
+    _current_mesh_name:str = ""
 
     _sp_sync_ue:ue_sync
    
@@ -84,8 +85,11 @@ class sp_sync:
         """
         项目打开
         """
-
+        
         self._current_preset = None
+
+        mesh_path = substance_painter.project.last_imported_mesh_path()
+        self._current_mesh_name = mesh_path[mesh_path.rfind("/") + 1 : mesh_path.rfind(".")]
 
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectEditionEntered,
@@ -108,11 +112,11 @@ class sp_sync:
 
         self._sp_sync_ue.close_ue_sync_camera()
 
-    def _reset_freeze_ui(self, request):
+    def _reset_all_freeze_ui(self, request):
         if request:
             self._ui.sync_button.setEnabled(True)
             self._ui.sync_mesh_button.setEnabled(True)
-        
+    
     def _export_end_event(self, export_data:substance_painter.event.ExportTexturesEnded):
 
         if self._ui.auto_sync.isChecked() or self._export_sync_button_type:
@@ -127,10 +131,12 @@ class sp_sync:
                 for file in export_data.textures[item]:
                     export_file_list.append(file)
 
-            self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
             if self._ui.create_material.isChecked():
-                self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._get_texture_sets(), self._reset_freeze_ui)
-            
+                self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
+                self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._current_mesh_name, self._get_texture_sets(), self._reset_all_freeze_ui)
+            else:
+                self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list, self._reset_all_freeze_ui)
+
     def _select_file_button_click(self):
         
         if not substance_painter.project.is_open():
@@ -211,8 +217,7 @@ class sp_sync:
         return export_list
 
     def _sync_button_click(self):
-        self._ui.sync_mesh_button.setEnabled(False)
-
+        
         if not substance_painter.project.is_open():
             return
         
@@ -220,6 +225,7 @@ class sp_sync:
             QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定贴图输出配置!")
             return
         
+        self._ui.sync_mesh_button.setEnabled(False)
         self._ui.sync_button.setEnabled(False)
             
         self._export_sync_button_type = True
@@ -259,13 +265,11 @@ class sp_sync:
             QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定贴图输出配置!")
             return
 
-        self._ui.sync_mesh_button.setEnabled(False)
-
         self._sync_button_click()
 
-        export_path = self._temp_path + "/" + substance_painter.project.name() + ".fbx"
+        export_path = self._temp_path + "/" + self._current_mesh_name + ".fbx"
         request = substance_painter.export.export_mesh(export_path, substance_painter.export.MeshExportOption.TriangulatedMesh)
-        self._sp_sync_ue.ue_import_mesh(self._ui.file_path.text(), export_path, self._reset_freeze_ui)
+        self._sp_sync_ue.ue_import_mesh(self._ui.file_path.text(), export_path, self._reset_all_freeze_ui)
 
     def _save_data(self):
         """
@@ -293,14 +297,6 @@ class sp_sync:
             for preset in substance_painter.export.list_resource_export_presets(): 
                 if self._ui.select_preset.currentText() == preset.resource_id.name:
                     self._current_preset = preset
-    """
-    def _view_sync_check(self, state = None):
-        if state:
-            if substance_painter.project.is_open():
-                self._sp_sync_ue.sync_ue_camera_init()
-        else:
-            self._sp_sync_ue.close_ue_sync_camera()
-    """
 
     def _view_sync_click(self):
         if self._ui.sync_view.isChecked():

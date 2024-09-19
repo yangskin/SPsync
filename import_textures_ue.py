@@ -1,15 +1,11 @@
 import unreal
 
 asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
-def find_asset(folder_path, name, contain:bool = True):
+def find_asset(folder_path, name):
     assets = asset_library.list_assets(folder_path)
     for asset in assets:
-        if contain:
-            if name in asset:
-                return asset
-        else:
-            if name == asset[asset.rfind("/") + 1 : asset.rfind(".")]:
-                return asset
+        if name == asset[asset.rfind("/") + 1 : asset.rfind(".")]:
+            return asset
     return None
 
 def import_textures():
@@ -49,6 +45,6 @@ def import_textures():
             current_texture.set_editor_property("srgb", srgb)
             current_texture.set_editor_property("compression_settings", compression_settings)
             current_texture.set_editor_property("lod_group", lod_group)
-
-import_textures()
+        
+    return True
 

@@ -26,13 +26,13 @@ def import_mesh(path:str, target_path:str, name:str)->str:
     aset_tools.import_asset_tasks([task])
     return target_path + "/" + name
 
-def swap_meshes_and_set_material(path:str, materials_folder:str):
+def swap_meshes_and_set_material(path:str, materials_folder:str, name:str):
     static_mesh:unreal.StaticMesh = unreal.EditorAssetLibrary.load_asset(path)
     materials = static_mesh.static_materials
     asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
     
-    for index in range(len(materials)):
-        material_instance_path = find_asset(materials_folder, "MI_" + str(materials[index].material_slot_name), False)
+    for index in range(len(materials)): 
+        material_instance_path = find_asset(materials_folder, "MI_" + name + "_" + str(materials[index].material_slot_name))
         if material_instance_path != None:
             static_mesh.set_material(index, asset_library.load_asset(material_instance_path[0 : material_instance_path.rfind(".")]))
 
@@ -46,5 +46,5 @@ def swap_meshes_and_set_material(path:str, materials_folder:str):
         static_mesh_actor = unreal.EditorLevelLibrary.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
 
 def import_mesh_and_swap(path:str, target:str, name:str):
-    swap_meshes_and_set_material(import_mesh(path, target, name), target)
+    swap_meshes_and_set_material(import_mesh(path, target, name), target, name)
     return True

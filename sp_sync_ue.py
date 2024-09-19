@@ -215,7 +215,7 @@ class ue_sync(QtCore.QObject):
         image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "端口链接失败,检查UE中相关设置!", self._main_widget)
         image_dialog.exec_()
 
-    def sync_ue_textures(self, target_path: str, export_file_list:list):
+    def sync_ue_textures(self, target_path: str, export_file_list:list, callback:callable = None):
         """
         同步列表中的贴图到UE中
         """
@@ -228,8 +228,13 @@ class ue_sync(QtCore.QObject):
         current_to_ue_code = current_to_ue_code.replace('EXPORT_TEXTURE_PATH', exportFileListStr)
 
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
-        
-    def sync_ue_create_material_and_connect_textures(self, target_path, material_names:List[str], callback:callable):
+
+        self._ue_sync_remote.add_command(ue_sync_command("import_textures()", 
+                                                         lambda: self.sync_error.emit("sync_error"), 
+                                                         callback, 
+                                                         remote_execution.MODE_EVAL_STATEMENT))
+          
+    def sync_ue_create_material_and_connect_textures(self, target_path, mesh_name, material_names:List[str], callback:callable):
         self._ue_sync_remote.add_command(ue_sync_command(self._material_ue_code, lambda: self.sync_error.emit("sync_error")))
         self._ue_sync_remote.add_command(ue_sync_command(self._material_instance_ue_code, lambda: self.sync_error.emit("sync_error")))
 
@@ -239,6 +244,7 @@ class ue_sync(QtCore.QObject):
         for material_name in material_names:
             material_names_str += "  '"+ material_name + "',\n"
         current_to_ue_code = current_to_ue_code.replace('MATERIAL_NAMES', material_names_str)
+        current_to_ue_code = current_to_ue_code.replace('MESH_NAME', mesh_name)
 
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
 

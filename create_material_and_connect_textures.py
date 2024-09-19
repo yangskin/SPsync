@@ -18,16 +18,17 @@ def create_material_and_connect_texture():
     ]
 
     target_path = "TARGET_PATH"
-    
+    mesh_name = "MESH_NAME"
+
     for material_name in material_names:
-        material_instance_path = target_path + "/" + "MI_" + material_name
+        material_instance_path = target_path + "/" + "MI_" + mesh_name + "_" + material_name
         if not asset_library.do_assets_exist([material_instance_path]):
             material_instance:unreal.MaterialInstanceConstant = get_material_instance(material_instance_path)
 
-            bco = get_texture_parameter_value("BCO", target_path, material_name + "_BCO")
-            mra = get_texture_parameter_value("MRA", target_path, material_name + "_MRAS", False)
-            n = get_texture_parameter_value("N", target_path, material_name + "_N", False, True)
-            es = get_texture_parameter_value("ES", target_path, material_name + "_ES")
+            bco = get_texture_parameter_value("BCO", target_path, "T_" + mesh_name + "_" + material_name + "_BCO")
+            mra = get_texture_parameter_value("MRA", target_path, "T_" + mesh_name + "_" + material_name + "_MRAS", False)
+            n = get_texture_parameter_value("N", target_path, "T_" + mesh_name + "_" + material_name + "_N", False, True)
+            es = get_texture_parameter_value("ES", target_path, "T_" + mesh_name + "_" + material_name + "_ES")
 
             texture_parameter_values = []
             if bco != None:
