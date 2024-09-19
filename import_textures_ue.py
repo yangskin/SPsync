@@ -1,5 +1,17 @@
 import unreal
 
+asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
+def find_asset(folder_path, name, contain:bool = True):
+    assets = asset_library.list_assets(folder_path)
+    for asset in assets:
+        if contain:
+            if name in asset:
+                return asset
+        else:
+            if name == asset[asset.rfind("/") + 1 : asset.rfind(".")]:
+                return asset
+    return None
+
 def import_textures():
     paths = [
     EXPORT_TEXTURE_PATH

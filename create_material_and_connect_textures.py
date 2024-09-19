@@ -2,13 +2,6 @@ import unreal
 
 asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
 
-def find_asset(folder_path, name):
-    assets = asset_library.list_assets(folder_path)
-    for asset in assets:
-        if name in asset:
-            return asset
-    return None
-
 def get_texture_parameter_value(parameter_name, folder_path, name, srgb_type = True, is_normal = False):
     texture_path = find_asset(folder_path, name)
     if texture_path != None:

@@ -266,7 +266,7 @@ class ue_sync(QtCore.QObject):
     def close_ue_sync_camera(self):
         self._ue_sync_camera.thread_loop_type.set()
         self.ue_sync_camera_type = False
-        self._ui.view_sync.setChecked(False)
+        self._ui.sync_view.setChecked(False)
 
     def ue_sync_camera_error(self, message:str):
         self.close_ue_sync_camera()

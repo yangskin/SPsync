@@ -32,7 +32,7 @@ def swap_meshes_and_set_material(path:str, materials_folder:str):
     asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
     
     for index in range(len(materials)):
-        material_instance_path = find_asset(materials_folder, str(materials[index].material_slot_name))
+        material_instance_path = find_asset(materials_folder, "MI_" + str(materials[index].material_slot_name), False)
         if material_instance_path != None:
             static_mesh.set_material(index, asset_library.load_asset(material_instance_path[0 : material_instance_path.rfind(".")]))
 
