@@ -21,7 +21,7 @@
     <widget class="QComboBox" name="select_preset">
      <item>
       <property name="text">
-       <string>默认(分通道输出)</string>
+       <string>Default</string>
       </property>
      </item>
     </widget>
@@ -84,7 +84,7 @@
        <item row="3" column="0">
         <widget class="QCheckBox" name="auto_sync">
          <property name="text">
-          <string>输出贴图自动同步到引擎</string>
+          <string>Auto Export Texture</string>
          </property>
          <property name="checked">
           <bool>true</bool>
@@ -102,7 +102,7 @@
          <item>
           <widget class="QPushButton" name="file_select">
            <property name="text">
-            <string>选择</string>
+            <string>Selet Path</string>
            </property>
           </widget>
          </item>
@@ -188,7 +188,7 @@
        <item row="4" column="0">
         <widget class="QCheckBox" name="create_material">
          <property name="text">
-          <string>创建材质</string>
+          <string>Create Materials</string>
          </property>
          <property name="checked">
           <bool>true</bool>
@@ -196,11 +196,6 @@
         </widget>
        </item>
       </layout>
-     </widget>
-     <widget class="QWidget" name="unity">
-      <attribute name="title">
-       <string>Unity</string>
-      </attribute>
      </widget>
     </widget>
    </item>

@@ -116,9 +116,6 @@ class Ui_SPsync(object):
         self.gridLayout.addWidget(self.create_material, 4, 0, 1, 1)
 
         self.tabWidget.addTab(self.unreal, "")
-        self.unity = QWidget()
-        self.unity.setObjectName(u"unity")
-        self.tabWidget.addTab(self.unity, "")
 
         self.verticalLayout.addWidget(self.tabWidget)
 
@@ -137,15 +134,14 @@ class Ui_SPsync(object):
 
     def retranslateUi(self, SPsync):
         SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync", None))
-        self.select_preset.setItemText(0, QCoreApplication.translate("SPsync", u"\u9ed8\u8ba4(\u5206\u901a\u9053\u8f93\u51fa)", None))
+        self.select_preset.setItemText(0, QCoreApplication.translate("SPsync", u"Default", None))
 
-        self.auto_sync.setText(QCoreApplication.translate("SPsync", u"\u8f93\u51fa\u8d34\u56fe\u81ea\u52a8\u540c\u6b65\u5230\u5f15\u64ce", None))
-        self.file_select.setText(QCoreApplication.translate("SPsync", u"\u9009\u62e9", None))
+        self.auto_sync.setText(QCoreApplication.translate("SPsync", u"Auto Export Texture", None))
+        self.file_select.setText(QCoreApplication.translate("SPsync", u"Selet Path", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
         self.sync_mesh_button.setText(QCoreApplication.translate("SPsync", u"SYNC(Mesh)", None))
         self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))
-        self.create_material.setText(QCoreApplication.translate("SPsync", u"\u521b\u5efa\u6750\u8d28", None))
+        self.create_material.setText(QCoreApplication.translate("SPsync", u"Create Materials", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.unreal), QCoreApplication.translate("SPsync", u"Unreal", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.unity), QCoreApplication.translate("SPsync", u"Unity", None))
     # retranslateUi
 

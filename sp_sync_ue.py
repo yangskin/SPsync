@@ -37,7 +37,7 @@ class ImageDialog(QtWidgets.QDialog):
         self.image_label.setPixmap(pixmap.scaled(400, 667))
         layout.addWidget(self.image_label)
 
-        button = QtWidgets.QPushButton("确认", self)
+        button = QtWidgets.QPushButton("Yes", self)
         button.clicked.connect(self._colse)
         layout.addWidget(button)
 

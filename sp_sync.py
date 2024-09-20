@@ -123,7 +123,7 @@ class sp_sync:
             self._export_sync_button_type = False
 
             if self._ui.file_path.text() == "":
-                QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定引擎中的输出路径!")
+                QtWidgets.QMessageBox.information(self._main_widget, "Warning", "You need to specify the output path under the 'content/' directory in the engine!")
                 return
             
             export_file_list = []
@@ -132,8 +132,13 @@ class sp_sync:
                     export_file_list.append(file)
 
             if self._ui.create_material.isChecked():
-                self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
-                self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._current_mesh_name, self._get_texture_sets(), self._reset_all_freeze_ui)
+                if self._current_preset.resource_id.name == "SPSYNCDefault":
+                    self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
+                    self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._current_mesh_name, self._get_texture_sets(), self._reset_all_freeze_ui)
+                else:
+                    self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list, self._reset_all_freeze_ui)
+                    self._ui.create_material.setChecked(False)
+                    QtWidgets.QMessageBox.information(self._main_widget, "Warning", "The texture output configuration must be 'SPSYNCDefault' to generate materials!")
             else:
                 self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list, self._reset_all_freeze_ui)
 
@@ -149,7 +154,7 @@ class sp_sync:
             self._ui.file_path.setText( "/" + file_path[file_path.find("Content"):].replace("Content", "Game") )
             self._save_data()
         else:
-            QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要选择Content文件夹下的目录!")
+            QtWidgets.QMessageBox.information(self._main_widget, "Warning", "You need to specify the output path under the 'content/' directory in the engine!")
 
     def _wait_ShelfCrawlingEnded_loade_export_presets(self, state):
         self._loade_export_presets()
@@ -222,7 +227,7 @@ class sp_sync:
             return
         
         if self._current_preset == None:
-            QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定贴图输出配置!")
+            QtWidgets.QMessageBox.information(self._main_widget, "Warning", "Need to specify the texture output configuration!")
             return
         
         self._ui.sync_mesh_button.setEnabled(False)
@@ -262,7 +267,7 @@ class sp_sync:
             return
         
         if self._current_preset == None:
-            QtWidgets.QMessageBox.information(self._main_widget, "提示", "需要指定贴图输出配置!")
+            QtWidgets.QMessageBox.information(self._main_widget, "Warning", "Need to specify the texture output configuration!")
             return
 
         self._sync_button_click()

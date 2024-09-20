@@ -38,12 +38,41 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str):
 
     world = unreal.EditorLevelLibrary.get_editor_world()
     actors = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.Actor)
-    find_request:bool = False
+        
+
     for actor in actors:
-        if static_mesh.get_name() in actor.get_actor_label():
-            find_request = True
-    if not find_request:
-        static_mesh_actor = unreal.EditorLevelLibrary.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
+        if static_mesh.get_name() == actor.get_actor_label():
+            unreal.EditorLevelLibrary.destroy_actor(actor)
+
+    #static_mesh_actor = unreal.EditorLevelLibrary.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
+    viewport = unreal.EditorLevelLibrary.get_level_viewport_camera_info()
+    camera_location = viewport[0]
+    camera_rotation = viewport[1]
+
+    spawn_distance = 1000.0
+    forward_vector = camera_rotation.get_forward_vector()
+    spawn_location = camera_location + forward_vector * spawn_distance
+    
+    ray_start = spawn_location
+    ray_end = ray_start + unreal.Vector(0, 0, -10000)
+    
+    hit_result:unreal.HitResult = unreal.SystemLibrary.line_trace_single(
+        unreal.EditorLevelLibrary.get_editor_world(),
+        ray_start,
+        ray_end,
+        unreal.TraceTypeQuery.TRACE_TYPE_QUERY1,
+        False,
+        [],
+        unreal.DrawDebugTrace.NONE,
+        True
+    )
+    
+    if hit_result:
+        ground_location = hit_result.to_tuple()[4]
+        static_mesh_actor = unreal.EditorLevelLibrary.spawn_actor_from_object(static_mesh, ground_location, camera_rotation.combine(unreal.Rotator(0, 0, -180)))
+        unreal.EditorLevelLibrary.set_selected_level_actors([static_mesh_actor])
+    else:
+        static_mesh_actor = unreal.EditorLevelLibrary.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Quat.IDENTITY)
 
 def import_mesh_and_swap(path:str, target:str, name:str):
     swap_meshes_and_set_material(import_mesh(path, target, name), target, name)
