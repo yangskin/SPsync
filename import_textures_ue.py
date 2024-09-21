@@ -15,36 +15,28 @@ def import_textures():
 
     folder_path = "FOLDER_PATH"
     asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
+    asset_tools:unreal.AssetTools = unreal.AssetToolsHelpers.get_asset_tools()
 
     for path in paths:
         file_name = path[path.rfind("/") + 1 :path.rfind(".")]
         file_path = folder_path + "/" + file_name
 
-        current_texture:unreal.Texture2D = None
         if asset_library.do_assets_exist([file_path]):
-            current_texture:unreal.Texture2D = asset_library.load_asset(file_path)
-            if current_texture:
-                srgb = current_texture.get_editor_property("srgb")
-                compression_settings = current_texture.get_editor_property("compression_settings")
-                lod_group = current_texture.get_editor_property("lod_group")
+            data = unreal.AutomatedAssetImportData()
+            data.set_editor_property("destination_path", folder_path)
+            data.set_editor_property("filenames", [path])
+            data.set_editor_property("replace_existing", True)
+            asset_tools.import_assets_automated(data)
 
-        importTask:unreal.AssetImportTask = unreal.AssetImportTask()
-        importTask.filename = path
-        #importTask.async_ = True
-        importTask.destination_name = file_name
-        importTask.destination_path = folder_path
-        importTask.replace_existing = True
-        importTask.replace_existing_settings = False
-        importTask.automated = True
-
-        assetTools = unreal.AssetToolsHelpers.get_asset_tools()
-        assetTools.import_asset_tasks([importTask])
+        else:
+            importTask:unreal.AssetImportTask = unreal.AssetImportTask()
+            importTask.filename = path
+            importTask.destination_name = file_name
+            importTask.destination_path = folder_path
+            importTask.replace_existing = True
+            importTask.replace_existing_settings = False
+            importTask.automated = True
+            asset_tools.import_asset_tasks([importTask])
  
-        if current_texture != None:
-            current_texture = asset_library.load_asset(file_path)
-            current_texture.set_editor_property("srgb", srgb)
-            current_texture.set_editor_property("compression_settings", compression_settings)
-            current_texture.set_editor_property("lod_group", lod_group)
-        
     return True
 

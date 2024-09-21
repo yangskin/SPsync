@@ -42,7 +42,6 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str):
     world = unreal_editor_subsystem.get_editor_world()
     actors = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.Actor)
         
-
     for actor in actors:
         if static_mesh.get_name() == actor.get_actor_label():
             editor_actor_subsystem.destroy_actor(actor)
