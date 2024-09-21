@@ -26,7 +26,7 @@ from . sp_sync_ui import Ui_SPsync
 class ImageDialog(QtWidgets.QDialog):
     def __init__(self, image_path, message:str, parent = None):
         super().__init__(parent)
-        self.setWindowTitle("提示")
+        self.setWindowTitle("Warning")
         
         layout = QtWidgets.QVBoxLayout()
         lable = QtWidgets.QLabel(message, self)
@@ -212,7 +212,7 @@ class ue_sync(QtCore.QObject):
         pass
 
     def _show_help_window(self):
-        image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "端口链接失败,检查UE中相关设置!", self._main_widget)
+        image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "Port link failed, check the relevant settings in UE!", self._main_widget)
         image_dialog.exec_()
 
     def sync_ue_textures(self, target_path: str, export_file_list:list, callback:callable = None):
@@ -272,6 +272,12 @@ class ue_sync(QtCore.QObject):
     def close_ue_sync_camera(self):
         self._ue_sync_camera.thread_loop_type.set()
         self.ue_sync_camera_type = False
+
+        self._ue_sync_remote.add_command(ue_sync_command("exit_sync_camera()", 
+                                                         lambda: self.sync_error.emit("sync_error"), 
+                                                         None, 
+                                                         remote_execution.MODE_EVAL_STATEMENT))
+        
         self._ui.sync_view.setChecked(False)
 
     def ue_sync_camera_error(self, message:str):

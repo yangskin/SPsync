@@ -88,6 +88,8 @@ class sp_sync:
         
         self._current_preset = None
 
+        self._reset_all_freeze_ui(True)
+
         mesh_path = substance_painter.project.last_imported_mesh_path()
         self._current_mesh_name = mesh_path[mesh_path.rfind("/") + 1 : mesh_path.rfind(".")]
 

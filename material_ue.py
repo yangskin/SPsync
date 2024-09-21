@@ -35,6 +35,9 @@ def create_material(path:str)->unreal.Material:
             normal.set_editor_property("texture", normal_texture)
             unreal.MaterialEditingLibrary.connect_material_property(normal, "", unreal.MaterialProperty.MP_NORMAL)
 
-            unreal.EditorAssetLibrary.save_asset(path)
             unreal.MaterialEditingLibrary.layout_material_expressions(material)
+            unreal.MaterialEditingLibrary.recompile_material(material)
+            material.modify()
+            unreal.MaterialEditingLibrary.recompile_material(material)
+            
             return material

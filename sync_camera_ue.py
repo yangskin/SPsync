@@ -2,7 +2,7 @@ import unreal
 
 def find_camera_by_name(camera_name:str):
 
-    world = unreal.EditorLevelLibrary.get_editor_world()
+    world = unreal.UnrealEditorSubsystem().get_editor_world()
     actors = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.CameraActor)
     
     for actor in actors:
@@ -16,19 +16,23 @@ def create_and_activate_camera(camera_name, location=unreal.Vector(0, 0, 300), r
     if existing_camera:
         return existing_camera
 
-    camera_actor = unreal.EditorLevelLibrary.spawn_actor_from_class(unreal.CameraActor, location, rotation, True)
+    camera_actor = unreal.EditorActorSubsystem().spawn_actor_from_class(unreal.CameraActor, location, rotation, True)
     camera_actor.set_actor_label(camera_name)
-    unreal.EditorLevelLibrary.pilot_level_actor(camera_actor)
+    unreal.LevelEditorSubsystem().pilot_level_actor(camera_actor)
+    
     return camera_actor
 
 def maya_to_unreal_rotation(x, y, z):
     maya_quaternion = unreal.Rotator(x, y, 360 - z).quaternion()
     return unreal.Quat(-maya_quaternion.z, maya_quaternion.x, maya_quaternion.y, maya_quaternion.w).rotator().combine(unreal.Rotator(0, 0, 180))
 
+def exit_sync_camera():
+    unreal.LevelEditorSubsystem().pilot_level_actor(None)
+    unreal.LevelEditorSubsystem().editor_set_game_view(False)
+
 camera_actor:unreal.Actor = create_and_activate_camera("temp_camera")
 
-selected_actors = unreal.EditorLevelLibrary.get_selected_level_actors()
-
+selected_actors = unreal.EditorActorSubsystem().get_selected_level_actors()
 
 root_transform:unreal.Transform = None 
 for actor in selected_actors:
@@ -49,4 +53,5 @@ if camera_component:
     camera_component.set_editor_property("constrain_aspect_ratio", False)
     camera_component.set_editor_property("field_of_view", FOV)
 
-unreal.EditorLevelLibrary.pilot_level_actor(camera_actor)
+unreal.LevelEditorSubsystem().pilot_level_actor(camera_actor)
+unreal.LevelEditorSubsystem().editor_set_game_view(True)
