@@ -30,7 +30,7 @@ def import_textures():
 
         importTask:unreal.AssetImportTask = unreal.AssetImportTask()
         importTask.filename = path
-        importTask.async_ = False
+        #importTask.async_ = True
         importTask.destination_name = file_name
         importTask.destination_path = folder_path
         importTask.replace_existing = True
@@ -39,7 +39,7 @@ def import_textures():
 
         assetTools = unreal.AssetToolsHelpers.get_asset_tools()
         assetTools.import_asset_tasks([importTask])
-
+ 
         if current_texture != None:
             current_texture = asset_library.load_asset(file_path)
             current_texture.set_editor_property("srgb", srgb)

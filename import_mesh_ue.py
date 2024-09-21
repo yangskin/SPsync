@@ -1,5 +1,8 @@
 import unreal
 
+editor_actor_subsystem:unreal.EditorActorSubsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+unreal_editor_subsystem:unreal.UnrealEditorSubsystem = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+
 def import_mesh(path:str, target_path:str, name:str)->str:
     task = unreal.AssetImportTask()
     task.filename = path
@@ -36,15 +39,15 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str):
         if material_instance_path != None:
             static_mesh.set_material(index, asset_library.load_asset(material_instance_path[0 : material_instance_path.rfind(".")]))
 
-    world = unreal.UnrealEditorSubsystem().get_editor_world()
+    world = unreal_editor_subsystem.get_editor_world()
     actors = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.Actor)
         
 
     for actor in actors:
         if static_mesh.get_name() == actor.get_actor_label():
-            unreal.EditorUtilityActor.destroy_actor(actor)
+            editor_actor_subsystem.destroy_actor(actor)
 
-    viewport = unreal.UnrealEditorSubsystem().get_level_viewport_camera_info()
+    viewport = unreal_editor_subsystem.get_level_viewport_camera_info()
     camera_location = viewport[0]
     camera_rotation = viewport[1]
 
@@ -56,7 +59,7 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str):
     ray_end = ray_start + unreal.Vector(0, 0, -10000)
     
     hit_result:unreal.HitResult = unreal.SystemLibrary.line_trace_single(
-        unreal.UnrealEditorSubsystem().get_editor_world(),
+        world,
         ray_start,
         ray_end,
         unreal.TraceTypeQuery.TRACE_TYPE_QUERY1,
@@ -69,10 +72,10 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str):
     if hit_result:
         ground_location = hit_result.to_tuple()[4]
         
-        static_mesh_actor = unreal.EditorActorSubsystem().spawn_actor_from_object(static_mesh, ground_location, unreal.Rotator(0, 0, camera_rotation.yaw).combine(unreal.Rotator(0, 0, -180)))
-        unreal.EditorActorSubsystem().set_selected_level_actors([static_mesh_actor])
+        static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, ground_location, unreal.Rotator(0, 0, camera_rotation.yaw).combine(unreal.Rotator(0, 0, -180)))
+        editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
     else:
-        static_mesh_actor = unreal.EditorActorSubsystem().spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
+        static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
 
 def import_mesh_and_swap(path:str, target:str, name:str):
     swap_meshes_and_set_material(import_mesh(path, target, name), target, name)

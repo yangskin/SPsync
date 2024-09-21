@@ -131,7 +131,6 @@ class ue_sync_remote(QtCore.QObject):
 
 class ue_sync_camera(QtCore.QObject):
     _ue_sync_remote:ue_sync_remote
-    _sync_camera_code:str = ""
     sync_error = QtCore.Signal(str)
     thread_loop_type:threading.Event = threading.Event()
     
@@ -149,18 +148,13 @@ class ue_sync_camera(QtCore.QObject):
                 pass
 
             if camera != None:
-                code:str = self._sync_camera_code
-
                 pos = camera.position
-                code = code.replace('POS', str(pos[0]) + "," + str(pos[1]) + "," + str(pos[2]))
-
                 rot = camera.rotation
-                code = code.replace('ROTATE', str(rot[0]) + "," + str(rot[1]) + "," + str(rot[2]))
-
-                code = code.replace('FOV', str(camera.field_of_view))
-
-                #self._execute_ue_command(code)
+                code:str = "".join( 
+                    ["sync_camera(" , str(pos[0]) , "," , str(pos[1]) , "," , str(pos[2]) , "," , str(rot[0]) , "," , str(rot[1]) , "," , str(rot[2]) , "," , str(camera.field_of_view) , ")"]
+                    )
                 self._ue_sync_remote.add_command(ue_sync_command(code, lambda: self.sync_error.emit("sync_error")))
+                
                 time.sleep(0.033333)
 
 class ue_sync(QtCore.QObject):
@@ -206,7 +200,6 @@ class ue_sync(QtCore.QObject):
             self._import_mesh_ue_code = f.read()
         
         self._ue_sync_camera = ue_sync_camera(self._ue_sync_remote)
-        self._ue_sync_camera._sync_camera_code = self._sync_camera_code
 
         self.sync_error.connect(self.ue_sync_textures_error)
         pass
@@ -293,6 +286,8 @@ class ue_sync(QtCore.QObject):
 
         self._ue_sync_camera.sync_error.connect(self.ue_sync_camera_error)
         self._ue_sync_camera.thread_loop_type.clear()
+
+        self._ue_sync_remote.add_command(ue_sync_command(self._sync_camera_code, lambda: self.sync_error.emit("sync_error")))
 
         self._ue_sync_camera_thread = threading.Thread(target=self._ue_sync_camera.update, daemon=True)
         self._ue_sync_camera_thread.start()
