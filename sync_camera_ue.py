@@ -31,5 +31,3 @@ def sync_camera(px:float, py:float, pz:float, rx:float, ry:float, rz:float, fov:
         unreal_editor_subsystem.set_level_viewport_camera_info(root_transform.transform_location(positon), root_transform.transform_rotation(rotator)) 
     
     level_editor_subsystem.editor_invalidate_viewports()
-
-    
