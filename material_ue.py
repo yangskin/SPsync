@@ -34,7 +34,7 @@ def create_material(path:str)->unreal.Material:
             normal_texture:unreal.Texture2D = asset_library.load_asset("/Engine/EngineMaterials/FlatNormal")
             normal.set_editor_property("texture", normal_texture)
             unreal.MaterialEditingLibrary.connect_material_property(normal, "", unreal.MaterialProperty.MP_NORMAL)
-
+        
             unreal.MaterialEditingLibrary.layout_material_expressions(material)
             unreal.MaterialEditingLibrary.recompile_material(material)
             material.modify()
