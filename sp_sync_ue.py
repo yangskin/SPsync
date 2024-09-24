@@ -200,8 +200,7 @@ class ue_sync(QtCore.QObject):
             self._import_mesh_ue_code = f.read()
         
         self._ue_sync_camera = ue_sync_camera(self._ue_sync_remote)
-        self._ue_sync_remote.add_command(ue_sync_command(self._sync_camera_code, lambda: self.sync_error.emit("sync_error")))
-
+        
         self.sync_error.connect(self.ue_sync_textures_error)
         pass
 
@@ -288,8 +287,8 @@ class ue_sync(QtCore.QObject):
         self._ue_sync_camera.sync_error.connect(self.ue_sync_camera_error)
         self._ue_sync_camera.thread_loop_type.clear()
 
-        self._ue_sync_remote.add_command(ue_sync_command("level_editor_subsystem.editor_set_game_view(True)", 
-                                                         lambda: self.sync_error.emit("sync_error")))
+        self._ue_sync_remote.add_command(ue_sync_command(self._sync_camera_code, lambda: self.sync_error.emit("sync_error")))
+        self._ue_sync_remote.add_command(ue_sync_command("init_sync_camera()", lambda: self.sync_error.emit("sync_error")))
         
         self._ue_sync_camera_thread = threading.Thread(target=self._ue_sync_camera.update, daemon=True)
         self._ue_sync_camera_thread.start()

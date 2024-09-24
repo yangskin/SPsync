@@ -68,6 +68,11 @@ class sp_sync:
             substance_painter.event.ProjectOpened,
         self._project_open_event
         )
+        #绑定项目创建事件
+        substance_painter.event.DISPATCHER.connect(
+            substance_painter.event.ProjectCreated,
+        self._project_open_event
+        )
 
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectAboutToClose,
