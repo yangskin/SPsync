@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Epic Games, Inc. All Rights Reserved.
+# Copyright Epic Games, Inc. All Rights Reserved.
 
 import sys as _sys
 import json as _json
@@ -23,8 +23,9 @@ _NODE_TIMEOUT_SECONDS = 5                               # Number of seconds to w
 
 DEFAULT_MULTICAST_TTL = 0                               # Multicast TTL (0 is limited to the local host, 1 is limited to the local subnet)
 DEFAULT_MULTICAST_GROUP_ENDPOINT = ('239.0.0.1', 6766)  # The multicast group endpoint tuple that the UDP multicast socket should join (must match the "Multicast Group Endpoint" setting in the Python plugin)
-DEFAULT_MULTICAST_BIND_ADDRESS = '0.0.0.0'              # The adapter address that the UDP multicast socket should bind to, or 0.0.0.0 to bind to all adapters (must match the "Multicast Bind Address" setting in the Python plugin)
+DEFAULT_MULTICAST_BIND_ADDRESS = '127.0.0.1'            # The adapter address that the UDP multicast socket should bind to, or 0.0.0.0 to bind to all adapters (must match the "Multicast Bind Address" setting in the Python plugin)
 DEFAULT_COMMAND_ENDPOINT = ('127.0.0.1', 6776)          # The endpoint tuple for the TCP command connection hosted by this client (that the remote client will connect to)
+DEFAULT_RECEIVE_BUFFER_SIZE = 8192                      # The default receive buffer size
 
 # Execution modes (these must match the names given to LexToString for EPythonCommandExecutionMode in IPythonScriptPlugin.h)
 MODE_EXEC_FILE = 'ExecuteFile'                          # Execute the Python command as a file. This allows you to execute either a literal Python script containing multiple statements, or a file with optional arguments
@@ -33,7 +34,7 @@ MODE_EVAL_STATEMENT = 'EvaluateStatement'               # Evaluate the Python co
 
 class RemoteExecutionConfig(object):
     '''
-    Configuration data for establishing a remote connection with a UE4 instance running Python.
+    Configuration data for establishing a remote connection with a Unreal Editor instance running Python.
     '''
     def __init__(self):
         self.multicast_ttl = DEFAULT_MULTICAST_TTL
@@ -43,7 +44,7 @@ class RemoteExecutionConfig(object):
 
 class RemoteExecution(object):
     '''
-    A remote execution session. This class can discover remote "nodes" (UE4 instances running Python), and allow you to open a command channel to a particular instance.
+    A remote execution session. This class can discover remote "nodes" (Unreal Editor instances running Python), and allow you to open a command channel to a particular instance.
 
     Args:
         config (RemoteExecutionConfig): Configuration controlling the connection settings for this session.
@@ -57,7 +58,7 @@ class RemoteExecution(object):
     @property
     def remote_nodes(self):
         '''
-        Get the current set of discovered remote "nodes" (UE4 instances running Python).
+        Get the current set of discovered remote "nodes" (Unreal Editor instances running Python).
 
         Returns:
             list: A list of dicts containg the node ID and the other data.
@@ -66,14 +67,14 @@ class RemoteExecution(object):
 
     def start(self):
         '''
-        Start the remote execution session. This will begin the discovey process for remote "nodes" (UE4 instances running Python).
+        Start the remote execution session. This will begin the discovey process for remote "nodes" (Unreal Editor instances running Python).
         '''
         self._broadcast_connection = _RemoteExecutionBroadcastConnection(self._config, self._node_id)
         self._broadcast_connection.open()
 
     def stop(self):
         '''
-        Stop the remote execution session. This will end the discovey process for remote "nodes" (UE4 instances running Python), and close any open command connection.
+        Stop the remote execution session. This will end the discovey process for remote "nodes" (Unreal Editor instances running Python), and close any open command connection.
         '''
         self.close_command_connection()
         if self._broadcast_connection:
@@ -91,7 +92,7 @@ class RemoteExecution(object):
 
     def open_command_connection(self, remote_node_id):
         '''
-        Open a command connection to the given remote "node" (a UE4 instance running Python), closing any command connection that may currently be open.
+        Open a command connection to the given remote "node" (a Unreal Editor instance running Python), closing any command connection that may currently be open.
 
         Args:
             remote_node_id (string): The ID of the remote node (this can be obtained by querying `remote_nodes`).
@@ -127,7 +128,7 @@ class RemoteExecution(object):
 
 class _RemoteExecutionNode(object):
     '''
-    A discovered remote "node" (aka, a UE4 instance running Python).
+    A discovered remote "node" (aka, a Unreal Editor instance running Python).
 
     Args:
         data (dict): The data representing this node (from its "pong" reponse).
@@ -151,7 +152,7 @@ class _RemoteExecutionNode(object):
 
 class _RemoteExecutionBroadcastNodes(object):
     '''
-    A thread-safe set of remote execution "nodes" (UE4 instances running Python).
+    A thread-safe set of remote execution "nodes" (Unreal Editor instances running Python).
     '''
     def __init__(self):
         self._remote_nodes = {}
@@ -160,7 +161,7 @@ class _RemoteExecutionBroadcastNodes(object):
     @property
     def remote_nodes(self):
         '''
-        Get the current set of discovered remote "nodes" (UE4 instances running Python).
+        Get the current set of discovered remote "nodes" (Unreal Editor instances running Python).
 
         Returns:
             list: A list of dicts containg the node ID and the other data.
@@ -221,7 +222,7 @@ class _RemoteExecutionBroadcastConnection(object):
     @property
     def remote_nodes(self):
         '''
-        Get the current set of discovered remote "nodes" (UE4 instances running Python).
+        Get the current set of discovered remote "nodes" (Unreal Editor instances running Python).
 
         Returns:
             list: A list of dicts containg the node ID and the other data.
@@ -230,7 +231,7 @@ class _RemoteExecutionBroadcastConnection(object):
 
     def open(self):
         '''
-        Open the UDP based messaging and discovery connection. This will begin the discovey process for remote "nodes" (UE4 instances running Python).
+        Open the UDP based messaging and discovery connection. This will begin the discovey process for remote "nodes" (Unreal Editor instances running Python).
         '''
         self._running = True
         self._last_ping = None
@@ -240,7 +241,7 @@ class _RemoteExecutionBroadcastConnection(object):
 
     def close(self):
         '''
-        Close the UDP based messaging and discovery connection. This will end the discovey process for remote "nodes" (UE4 instances running Python).
+        Close the UDP based messaging and discovery connection. This will end the discovey process for remote "nodes" (Unreal Editor instances running Python).
         '''
         self._running = False
         if self._broadcast_listen_thread:
@@ -254,8 +255,11 @@ class _RemoteExecutionBroadcastConnection(object):
         '''
         Initialize the UDP based broadcast socket based on the current configuration.
         '''
-        self._broadcast_socket = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM, _socket.IPPROTO_UDP) # UDP/IP socket
-        self._broadcast_socket.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+        self._broadcast_socket = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM, _socket.IPPROTO_UDP)  # UDP/IP socket
+        if hasattr(_socket, 'SO_REUSEPORT'):
+            self._broadcast_socket.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEPORT, 1)
+        else:
+            self._broadcast_socket.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
         self._broadcast_socket.bind((self._config.multicast_bind_address, self._config.multicast_group_endpoint[1]))
         self._broadcast_socket.setsockopt(_socket.IPPROTO_IP, _socket.IP_MULTICAST_LOOP, 1)
         self._broadcast_socket.setsockopt(_socket.IPPROTO_IP, _socket.IP_MULTICAST_TTL, self._config.multicast_ttl)
@@ -279,7 +283,7 @@ class _RemoteExecutionBroadcastConnection(object):
             # Receive and process all pending data
             while True:
                 try:
-                    data = self._broadcast_socket.recv(4096)
+                    data = self._broadcast_socket.recv(DEFAULT_RECEIVE_BUFFER_SIZE)
                 except _socket.timeout:
                     data = None
                 if data:
@@ -375,7 +379,7 @@ class _RemoteExecutionCommandConnection(object):
     Args:
         config (RemoteExecutionConfig): Configuration controlling the connection settings.
         node_id (string): The ID of the local "node" (this session).
-        remote_node_id (string): The ID of the remote "node" (the UE4 instance running Python).
+        remote_node_id (string): The ID of the remote "node" (the Unreal Editor instance running Python).
     '''
     def __init__(self, config, node_id, remote_node_id):
         self._config = config
@@ -449,7 +453,7 @@ class _RemoteExecutionCommandConnection(object):
         Returns:
             The message that was received.
         '''
-        data = self._command_channel_socket.recv(4096)
+        data = self._command_channel_socket.recv(DEFAULT_RECEIVE_BUFFER_SIZE)
         if data:
             message = _RemoteExecutionMessage(None, None)
             if message.from_json_bytes(data) and message.passes_receive_filter(self._node_id) and message.type_ == expected_type:
@@ -460,7 +464,11 @@ class _RemoteExecutionCommandConnection(object):
         '''
         Initialize the TCP based command socket based on the current configuration, and set it to listen for an incoming connection.
         '''
-        self._command_listen_socket = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM, _socket.IPPROTO_TCP) # TCP/IP socket
+        self._command_listen_socket = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM, _socket.IPPROTO_TCP)  # TCP/IP socket
+        if hasattr(_socket, 'SO_REUSEPORT'):
+            self._command_listen_socket.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEPORT, 1)
+        else:
+            self._command_listen_socket.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
         self._command_listen_socket.bind(self._config.command_endpoint)
         self._command_listen_socket.listen(1)
         self._command_listen_socket.settimeout(5)
@@ -472,7 +480,7 @@ class _RemoteExecutionCommandConnection(object):
         Args:
             broadcast_connection (_RemoteExecutionBroadcastConnection): The broadcast connection to send UDP based messages over.
         '''
-        for _n in range(2):
+        for _n in range(6):
             broadcast_connection.broadcast_open_connection(self._remote_node_id)
             try:
                 self._command_channel_socket = self._command_listen_socket.accept()[0]
@@ -480,7 +488,7 @@ class _RemoteExecutionCommandConnection(object):
                 return
             except _socket.timeout:
                 continue
-        #raise RuntimeError('Remote party failed to attempt the command socket connection!')
+        raise RuntimeError('Remote party failed to attempt the command socket connection!')
 
 class _RemoteExecutionMessage(object):
     '''
@@ -532,7 +540,7 @@ class _RemoteExecutionMessage(object):
         if self.data:
             json_obj['data'] = self.data
         return _json.dumps(json_obj, ensure_ascii=False)
-
+    
     def to_json_bytes(self):
         '''
         Convert this message to its JSON representation as UTF-8 bytes.
@@ -553,9 +561,7 @@ class _RemoteExecutionMessage(object):
         Returns:
             bool: True if this message could be parsed, False otherwise.
         '''
-
         try:
-            #json_obj = _json.loads(json_str, encoding='utf-8')
             json_obj = _json.loads(json_str)
             # Read and validate required protocol version information
             if json_obj['version'] != _PROTOCOL_VERSION:
