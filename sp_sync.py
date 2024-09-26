@@ -340,7 +340,6 @@ class sp_sync:
 
         #绑定列表选中事件
         self._ui.select_preset.highlighted.connect(self._select_preset_changed)
-        #self._ui.select_preset.currentIndexChanged.connect(self._select_preset_changed)
 
         self._ui.sync_view.clicked.connect(self._view_sync_click)
 
