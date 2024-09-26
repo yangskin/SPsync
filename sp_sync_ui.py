@@ -18,15 +18,9 @@ class Ui_SPsync(object):
         if not SPsync.objectName():
             SPsync.setObjectName(u"SPsync")
         SPsync.setEnabled(True)
-        SPsync.resize(366, 498)
-        self.verticalLayout = QVBoxLayout(SPsync)
-        self.verticalLayout.setObjectName(u"verticalLayout")
-        self.select_preset = QComboBox(SPsync)
-        self.select_preset.addItem("")
-        self.select_preset.setObjectName(u"select_preset")
-
-        self.verticalLayout.addWidget(self.select_preset)
-
+        SPsync.resize(380, 526)
+        self.gridLayout_2 = QGridLayout(SPsync)
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
         self.tabWidget = QTabWidget(SPsync)
         self.tabWidget.setObjectName(u"tabWidget")
         self.tabWidget.setEnabled(True)
@@ -47,19 +41,14 @@ class Ui_SPsync(object):
         self.unreal.setBaseSize(QSize(0, 0))
         self.unreal.setLayoutDirection(Qt.LeftToRight)
         self.unreal.setAutoFillBackground(False)
-        self.gridLayout = QGridLayout(self.unreal)
-        self.gridLayout.setObjectName(u"gridLayout")
-        self.auto_sync = QCheckBox(self.unreal)
-        self.auto_sync.setObjectName(u"auto_sync")
-        self.auto_sync.setChecked(True)
-
-        self.gridLayout.addWidget(self.auto_sync, 3, 0, 1, 1)
-
+        self.verticalLayout_2 = QVBoxLayout(self.unreal)
+        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.horizontalLayout.setContentsMargins(-1, 0, -1, -1)
         self.file_path = QLineEdit(self.unreal)
         self.file_path.setObjectName(u"file_path")
+        self.file_path.setBaseSize(QSize(0, 0))
 
         self.horizontalLayout.addWidget(self.file_path)
 
@@ -69,28 +58,29 @@ class Ui_SPsync(object):
         self.horizontalLayout.addWidget(self.file_select)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout, 0, 0, 1, 1)
-
-        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
-
-        self.gridLayout.addItem(self.verticalSpacer_2, 11, 0, 1, 1)
+        self.verticalLayout_2.addLayout(self.horizontalLayout)
 
         self.sync_button = QPushButton(self.unreal)
         self.sync_button.setObjectName(u"sync_button")
 
-        self.gridLayout.addWidget(self.sync_button, 1, 0, 1, 1)
+        self.verticalLayout_2.addWidget(self.sync_button)
 
         self.sync_mesh_button = QPushButton(self.unreal)
         self.sync_mesh_button.setObjectName(u"sync_mesh_button")
 
-        self.gridLayout.addWidget(self.sync_mesh_button, 2, 0, 1, 1)
+        self.verticalLayout_2.addWidget(self.sync_mesh_button)
 
-        self.horizontalLayout_3 = QHBoxLayout()
-        self.horizontalLayout_3.setSpacing(6)
-        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
-        self.horizontalLayout_3.setContentsMargins(-1, -1, 0, 0)
+        self.auto_sync = QCheckBox(self.unreal)
+        self.auto_sync.setObjectName(u"auto_sync")
+        self.auto_sync.setChecked(True)
 
-        self.gridLayout.addLayout(self.horizontalLayout_3, 8, 0, 1, 1)
+        self.verticalLayout_2.addWidget(self.auto_sync)
+
+        self.create_material = QCheckBox(self.unreal)
+        self.create_material.setObjectName(u"create_material")
+        self.create_material.setChecked(True)
+
+        self.verticalLayout_2.addWidget(self.create_material)
 
         self.sync_view = QToolButton(self.unreal)
         self.sync_view.setObjectName(u"sync_view")
@@ -107,21 +97,56 @@ class Ui_SPsync(object):
         self.sync_view.setCheckable(True)
         self.sync_view.setChecked(False)
 
-        self.gridLayout.addWidget(self.sync_view, 5, 0, 1, 1)
+        self.verticalLayout_2.addWidget(self.sync_view)
 
-        self.create_material = QCheckBox(self.unreal)
-        self.create_material.setObjectName(u"create_material")
-        self.create_material.setChecked(True)
+        self.horizontalLayout_3 = QHBoxLayout()
+        self.horizontalLayout_3.setSpacing(6)
+        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.horizontalLayout_3.setContentsMargins(-1, -1, 0, 0)
 
-        self.gridLayout.addWidget(self.create_material, 4, 0, 1, 1)
+        self.verticalLayout_2.addLayout(self.horizontalLayout_3)
+
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+
+        self.verticalLayout_2.addItem(self.verticalSpacer_2)
 
         self.tabWidget.addTab(self.unreal, "")
+        self.Help = QWidget()
+        self.Help.setObjectName(u"Help")
+        self.Help.setEnabled(True)
+        sizePolicy.setHeightForWidth(self.Help.sizePolicy().hasHeightForWidth())
+        self.Help.setSizePolicy(sizePolicy)
+        self.Help.setAutoFillBackground(False)
+        self.verticalLayout = QVBoxLayout(self.Help)
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.help_video = QPushButton(self.Help)
+        self.help_video.setObjectName(u"help_video")
 
-        self.verticalLayout.addWidget(self.tabWidget)
+        self.verticalLayout.addWidget(self.help_video)
+
+        self.verticalSpacer_3 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+
+        self.verticalLayout.addItem(self.verticalSpacer_3)
+
+        self.tabWidget.addTab(self.Help, "")
+
+        self.gridLayout_2.addWidget(self.tabWidget, 1, 0, 1, 1)
+
+        self.horizontalLayout_2 = QHBoxLayout()
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.horizontalLayout_2.setContentsMargins(-1, 0, -1, -1)
+        self.select_preset = QComboBox(SPsync)
+        self.select_preset.addItem("")
+        self.select_preset.setObjectName(u"select_preset")
+
+        self.horizontalLayout_2.addWidget(self.select_preset)
+
+
+        self.gridLayout_2.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
 
         self.verticalSpacer = QSpacerItem(20, 206, QSizePolicy.Minimum, QSizePolicy.Expanding)
 
-        self.verticalLayout.addItem(self.verticalSpacer)
+        self.gridLayout_2.addItem(self.verticalSpacer, 2, 0, 1, 1)
 
 
         self.retranslateUi(SPsync)
@@ -134,14 +159,16 @@ class Ui_SPsync(object):
 
     def retranslateUi(self, SPsync):
         SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync", None))
-        self.select_preset.setItemText(0, QCoreApplication.translate("SPsync", u"Default", None))
-
-        self.auto_sync.setText(QCoreApplication.translate("SPsync", u"Auto Export Texture", None))
         self.file_select.setText(QCoreApplication.translate("SPsync", u"Selet Path", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
         self.sync_mesh_button.setText(QCoreApplication.translate("SPsync", u"SYNC(Mesh)", None))
-        self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))
+        self.auto_sync.setText(QCoreApplication.translate("SPsync", u"Auto Export Texture", None))
         self.create_material.setText(QCoreApplication.translate("SPsync", u"Create Materials", None))
+        self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.unreal), QCoreApplication.translate("SPsync", u"Unreal", None))
+        self.help_video.setText(QCoreApplication.translate("SPsync", u"Video Tutorial", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.Help), QCoreApplication.translate("SPsync", u"Help", None))
+        self.select_preset.setItemText(0, QCoreApplication.translate("SPsync", u"Default", None))
+
     # retranslateUi
 

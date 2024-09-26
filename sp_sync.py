@@ -3,6 +3,7 @@ import os
 import tempfile
 import shutil
 from typing import List
+import webbrowser
 
 import substance_painter.export
 import substance_painter.textureset
@@ -296,16 +297,17 @@ class sp_sync:
         """
         读取配置
         """
+
         metadata:substance_painter.project.Metadata = substance_painter.project.Metadata("sp_sync")
         self._ui.file_path.setText(metadata.get("export_path"))
         self._origin_export_path = metadata.get("origin_export_path")
 
         current_preset = metadata.get("current_preset")
- 
+
         for i in range(self._ui.select_preset.count()):
             if self._ui.select_preset.itemText(i) == current_preset:
                 self._ui.select_preset.setCurrentIndex(i)
-   
+
             for preset in substance_painter.export.list_resource_export_presets(): 
                 if self._ui.select_preset.currentText() == preset.resource_id.name:
                     self._current_preset = preset
@@ -316,6 +318,9 @@ class sp_sync:
                 self._sp_sync_ue.sync_ue_camera_init()
         else:
             self._sp_sync_ue.close_ue_sync_camera()
+
+    def _help_video_click(self):
+        webbrowser.open("https://www.baidu.com")
      
     def _config_ui(self):
         """
@@ -335,10 +340,13 @@ class sp_sync:
 
         #绑定列表选中事件
         self._ui.select_preset.highlighted.connect(self._select_preset_changed)
+        #self._ui.select_preset.currentIndexChanged.connect(self._select_preset_changed)
 
         self._ui.sync_view.clicked.connect(self._view_sync_click)
 
         self._ui.sync_mesh_button.clicked.connect(self._sync_button_mesh_click)
+
+        self._ui.help_video.clicked.connect(self._help_video_click)
 
         self.plugin_widgets.append(self._main_widget)
         substance_painter.ui.add_dock_widget(self._main_widget)
