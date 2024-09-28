@@ -39,6 +39,7 @@ class sp_sync:
     _current_mesh_name:str = ""
 
     _sp_sync_ue:ue_sync
+    _load_type:bool = False
    
     def __init__(self):
         """
@@ -103,18 +104,23 @@ class sp_sync:
             substance_painter.event.ProjectEditionEntered,
         self._wait_ProjectEditionEntered_loade_export_presets
         )
-
+        
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ShelfCrawlingEnded,
         self._wait_ShelfCrawlingEnded_loade_export_presets
         )
-
+        
         if self._ui.sync_view.isChecked():
             self._sp_sync_ue.sync_ue_camera_init()
         
     def _project_about_to_close_event(self, state):
 
+        self._load_type = False
+
+        self._ui.tabWidget.setEnabled(False)
+
         self._ui.file_path.setText("")
+        self._ui.select_preset.currentIndexChanged.disconnect(self._select_preset_changed)
         self._ui.select_preset.clear()
         self._clean_temp_folder()
 
@@ -165,10 +171,10 @@ class sp_sync:
             QtWidgets.QMessageBox.information(self._main_widget, "Warning", "You need to specify the output path under the 'content/' directory in the engine!")
 
     def _wait_ShelfCrawlingEnded_loade_export_presets(self, state):
-        self._loade_export_presets()
+        if state.shelf_name ==  "starter_assets":
+            self._loade_export_presets()
 
     def _wait_ProjectEditionEntered_loade_export_presets(self, state):
-
         substance_painter.event.DISPATCHER.disconnect(
         substance_painter.event.ProjectEditionEntered,
         self._wait_ProjectEditionEntered_loade_export_presets
@@ -181,12 +187,18 @@ class sp_sync:
         """
         读取导出预设 并绑定到UI
         """
+        
+        if self._load_type:
+            return
 
         if not substance_painter.project.is_open():
             return
         
         #清空列表
         self._ui.select_preset.clear()
+
+        if len(substance_painter.export.list_resource_export_presets()) < 10:
+            return
 
         #读取默认输出预设
         substance_painter.resource.import_session_resource(self._root_path + "/assets/export-presets/SPSYNCDefault.spexp", 
@@ -311,6 +323,10 @@ class sp_sync:
             for preset in substance_painter.export.list_resource_export_presets(): 
                 if self._ui.select_preset.currentText() == preset.resource_id.name:
                     self._current_preset = preset
+        
+        self._ui.select_preset.currentIndexChanged.connect(self._select_preset_changed)
+        self._ui.tabWidget.setEnabled(True)
+        self._load_type = True
 
     def _view_sync_click(self):
         if self._ui.sync_view.isChecked():
@@ -339,13 +355,16 @@ class sp_sync:
         self._ui.sync_button.clicked.connect(self._sync_button_click)
 
         #绑定列表选中事件
-        self._ui.select_preset.highlighted.connect(self._select_preset_changed)
+        #self._ui.select_preset.highlighted.connect(self._select_preset_changed)
+        #self._ui.select_preset.currentIndexChanged.connect(self._select_preset_changed)
 
         self._ui.sync_view.clicked.connect(self._view_sync_click)
 
         self._ui.sync_mesh_button.clicked.connect(self._sync_button_mesh_click)
 
         self._ui.help_video.clicked.connect(self._help_video_click)
+
+        self._ui.tabWidget.setEnabled(False)
 
         self.plugin_widgets.append(self._main_widget)
         substance_painter.ui.add_dock_widget(self._main_widget)

@@ -43,6 +43,16 @@ class Ui_SPsync(object):
         self.unreal.setAutoFillBackground(False)
         self.verticalLayout_2 = QVBoxLayout(self.unreal)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
+        self.label = QLabel(self.unreal)
+        self.label.setObjectName(u"label")
+
+        self.verticalLayout_2.addWidget(self.label)
+
+        self.select_preset = QComboBox(self.unreal)
+        self.select_preset.setObjectName(u"select_preset")
+
+        self.verticalLayout_2.addWidget(self.select_preset)
+
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.horizontalLayout.setContentsMargins(-1, 0, -1, -1)
@@ -135,12 +145,6 @@ class Ui_SPsync(object):
         self.horizontalLayout_2 = QHBoxLayout()
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.horizontalLayout_2.setContentsMargins(-1, 0, -1, -1)
-        self.select_preset = QComboBox(SPsync)
-        self.select_preset.addItem("")
-        self.select_preset.setObjectName(u"select_preset")
-
-        self.horizontalLayout_2.addWidget(self.select_preset)
-
 
         self.gridLayout_2.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
 
@@ -159,6 +163,7 @@ class Ui_SPsync(object):
 
     def retranslateUi(self, SPsync):
         SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync", None))
+        self.label.setText(QCoreApplication.translate("SPsync", u"Export Preset:", None))
         self.file_select.setText(QCoreApplication.translate("SPsync", u"Selet Path", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
         self.sync_mesh_button.setText(QCoreApplication.translate("SPsync", u"SYNC(Mesh)", None))
@@ -168,7 +173,5 @@ class Ui_SPsync(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.unreal), QCoreApplication.translate("SPsync", u"Unreal", None))
         self.help_video.setText(QCoreApplication.translate("SPsync", u"Video Tutorial", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Help), QCoreApplication.translate("SPsync", u"Help", None))
-        self.select_preset.setItemText(0, QCoreApplication.translate("SPsync", u"Default", None))
-
     # retranslateUi
 

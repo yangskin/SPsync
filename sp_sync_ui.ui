@@ -73,6 +73,16 @@
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Export Preset:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="select_preset"/>
+       </item>
+       <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
          <property name="topMargin">
           <number>0</number>
@@ -241,15 +251,6 @@
      <property name="topMargin">
       <number>0</number>
      </property>
-     <item>
-      <widget class="QComboBox" name="select_preset">
-       <item>
-        <property name="text">
-         <string>Default</string>
-        </property>
-       </item>
-      </widget>
-     </item>
     </layout>
    </item>
    <item row="2" column="0">
