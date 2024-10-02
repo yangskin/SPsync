@@ -40,6 +40,7 @@ class sp_sync:
 
     _sp_sync_ue:ue_sync
     _load_type:bool = False
+    _current_set_names:List[str] = []
    
     def __init__(self):
         """
@@ -63,24 +64,40 @@ class sp_sync:
         #绑定贴图导出事件
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ExportTexturesEnded,
-        self._export_end_event)
+            self._export_end_event
+        )
 
         #绑定项目开启事件
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectOpened,
-        self._project_open_event
+            self._project_open_event
         )
         #绑定项目创建事件
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectCreated,
-        self._project_open_event
+            self._project_open_event
         )
 
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectAboutToClose,
-        self._project_about_to_close_event
+            self._project_about_to_close_event
         )
 
+        substance_painter.event.DISPATCHER.connect(
+            substance_painter.event.LayerStacksModelDataChanged, 
+            self._on_layerstack_changed
+        )
+
+    def _on_layerstack_changed(self, event: substance_painter.event.LayerStacksModelDataChanged):
+        """
+        获取选中的纹理组        
+        """
+
+        stack:substance_painter.textureset.Stack = substance_painter.textureset.get_active_stack()
+        current_set_name = stack.material().name()
+        if current_set_name not in self._current_set_names:
+            self._current_set_names.append(current_set_name)
+        
     def _clean_temp_folder(self):
         """
         清理临时文件夹
@@ -94,6 +111,10 @@ class sp_sync:
         """
         
         self._current_preset = None
+
+        self._current_set_names = []
+        for texture_set in substance_painter.textureset.all_texture_sets():
+            self._current_set_names.append(texture_set.name())
 
         self._reset_all_freeze_ui(True)
 
@@ -256,8 +277,11 @@ class sp_sync:
         self._export_sync_button_type = True
 
         export_list = []
-        for texture_set in substance_painter.textureset.all_texture_sets():
-            export_list.append({"rootPath" : texture_set.name()})
+
+        for _current_set_names in self._current_set_names:
+            export_list.append({"rootPath" : _current_set_names})
+        self._current_set_names = []
+        self._on_layerstack_changed(None)
 
         newPreset = {
             "name": self._current_preset.resource_id.name,
