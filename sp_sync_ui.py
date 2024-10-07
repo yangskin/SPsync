@@ -134,6 +134,11 @@ class Ui_SPsync(object):
 
         self.verticalLayout.addWidget(self.help_video)
 
+        self.textBrowser = QTextBrowser(self.Help)
+        self.textBrowser.setObjectName(u"textBrowser")
+
+        self.verticalLayout.addWidget(self.textBrowser)
+
         self.verticalSpacer_3 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
 
         self.verticalLayout.addItem(self.verticalSpacer_3)
@@ -172,6 +177,12 @@ class Ui_SPsync(object):
         self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.unreal), QCoreApplication.translate("SPsync", u"Unreal", None))
         self.help_video.setText(QCoreApplication.translate("SPsync", u"Video Tutorial", None))
+        self.textBrowser.setHtml(QCoreApplication.translate("SPsync", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"</style></head><body style=\" font-family:'SimSun'; font-size:6pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:7pt;\">Emial    : yangskin@163.com</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:7pt;\">BiliBili : https://space.bilibili.com/249466</span></p></body></html>", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Help), QCoreApplication.translate("SPsync", u"Help", None))
     # retranslateUi
 
