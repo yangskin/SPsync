@@ -105,6 +105,11 @@ class sp_sync:
         if os.path.exists(self._temp_path):
             shutil.rmtree(self._temp_path)
 
+    def _export_all_set(self):
+        self._current_set_names = []
+        for texture_set in substance_painter.textureset.all_texture_sets():
+            self._current_set_names.append(texture_set.name())
+
     def _project_open_event(self, state):
         """
         项目打开
@@ -112,9 +117,7 @@ class sp_sync:
         
         self._current_preset = None
 
-        self._current_set_names = []
-        for texture_set in substance_painter.textureset.all_texture_sets():
-            self._current_set_names.append(texture_set.name())
+        self._export_all_set()
 
         self._reset_all_freeze_ui(True)
 
@@ -313,6 +316,8 @@ class sp_sync:
         if self._current_preset == None:
             QtWidgets.QMessageBox.information(self._main_widget, "Warning", "Need to specify the texture output configuration!")
             return
+
+        self._export_all_set()
 
         self._sync_button_click()
 
