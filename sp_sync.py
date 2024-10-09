@@ -373,7 +373,7 @@ class sp_sync:
             self._sp_sync_ue.close_ue_sync_camera()
 
     def _help_video_click(self):
-        webbrowser.open("https://space.bilibili.com/249466")
+        webbrowser.open("https://www.bilibili.com/video/BV1XS11YKEJe/")
      
     def _config_ui(self):
         """
