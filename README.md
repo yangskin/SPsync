@@ -1,6 +1,6 @@
 # Introduction
 
-Substance 3D Painter 贴图同步 UE插件<br>
+Substance 3D Painter synchronization UE plugin<br>
 
 ## Video Demonstration
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/K-tsUKiZ9qc/0.jpg)](https://www.youtube.com/watch?v=K-tsUKiZ9qc)<br>
