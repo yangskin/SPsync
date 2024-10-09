@@ -15,10 +15,18 @@ import substance_painter.properties
 import substance_painter.ui
 import substance_painter_plugins
 
-from PySide2 import QtWidgets
-from PySide2 import QtGui
-from PySide2 import QtCore
-from PySide2.QtGui import QPixmap
+IsQt5 = substance_painter.application.version_info() < (10,1,0)
+
+if IsQt5 :
+    from PySide2 import QtWidgets
+    from PySide2 import QtGui
+    from PySide2 import QtCore
+    from PySide2.QtGui import QPixmap
+else :
+    from PySide6 import QtWidgets
+    from PySide6 import QtGui
+    from PySide6 import QtCore
+    from PySide6.QtGui import QPixmap
 
 from . sp_sync_ue import ue_sync
 
