@@ -39,16 +39,12 @@ def init_sync_camera():
     level_editor_subsystem.editor_set_game_view(True)
 
 def exit_sync_camera():
-    global camera_actor
     level_editor_subsystem.pilot_level_actor(None)
     level_editor_subsystem.editor_set_game_view(False)
     current_camera_actor = find_camera_by_name("spsync_temp_camera")
     if current_camera_actor != None:
         editor_actor_subsystem.destroy_actor(current_camera_actor)
-    else:
-        if camera_actor != None:
-            editor_actor_subsystem.destroy_actor(camera_actor)
-    
+
 def sync_camera(px:float, py:float, pz:float, rx:float, ry:float, rz:float, fov:float):
     global camera_actor
 

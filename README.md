@@ -20,6 +20,11 @@ Substance 3D Painter synchronization UE plugin<br>
   Edit>Editor Preferences>Use Less CPU when in Background > Uncheck
   Edit>Project Settings>Python Remote Execution>Enable Remote Execution > Check
   
+  UDIM support
+  Edit>Project Settings>Engine>Rendering>Enable virtual texture support Check
+  Edit>Project Settings>Engine>Rendering>Enable virtual texture for Opacity Mask Check
+
+  
 - Copy it to this "C:\Users\username\Documents\Adobe\Adobe Substance 3D Painter\python\plugins" directory
 
 ## Contact

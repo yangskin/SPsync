@@ -168,9 +168,13 @@ class ue_sync(QtCore.QObject):
     _material_instance_ue_code:str = ""
     _create_material_and_connect_textures_code:str = ""
     _import_mesh_ue_code:str = ""
-    _ue_sync_camera:ue_sync_camera
+    _ue_sync_camera:ue_sync_camera = None
     _ue_sync_camera_thread:threading.Thread = None
     _ue_sync_remote:ue_sync_remote = ue_sync_remote()
+    _udim_type_str:str = "False"
+    _material_masked_str:str = "False"
+    _material_translucent_str:str = "False"
+    _mesh_scale_str:str = "1"
     sync_error = QtCore.Signal(str)
     
     def __init__(self, ui: Ui_SPsync, main_widget:QtWidgets.QWidget) -> None:
@@ -203,6 +207,27 @@ class ue_sync(QtCore.QObject):
         self.sync_error.connect(self.ue_sync_textures_error)
         pass
 
+    def set_udim_type(self, udim_type:bool):
+        if udim_type:
+            self._udim_type_str = "True"
+        else:
+            self._udim_type_str = "False"
+
+    def set_material_masked(self, material_masked:bool):
+        if material_masked:
+            self._material_masked_str = "True"
+        else:
+            self._material_masked_str = "False"
+
+    def set_material_translucent(self, material_translucent:bool):
+        if material_translucent:
+            self._material_translucent_str = "True"
+        else:
+            self._material_translucent_str = "False"
+
+    def set_mesh_scale(self, scale:float):
+        self._mesh_scale_str = str(scale)
+
     def _show_help_window(self):
         image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "Port link failed, check the relevant settings in UE!", self._main_widget)
         image_dialog.exec_()
@@ -219,6 +244,8 @@ class ue_sync(QtCore.QObject):
         for file in export_file_list:
             exportFileListStr += "  '"+ file + "',\n"
         current_to_ue_code = current_to_ue_code.replace('EXPORT_TEXTURE_PATH', exportFileListStr)
+
+        current_to_ue_code = current_to_ue_code.replace('UDIM_TYPE', self._udim_type_str)
 
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
 
@@ -238,6 +265,9 @@ class ue_sync(QtCore.QObject):
             material_names_str += "  '"+ material_name + "',\n"
         current_to_ue_code = current_to_ue_code.replace('MATERIAL_NAMES', material_names_str)
         current_to_ue_code = current_to_ue_code.replace('MESH_NAME', mesh_name)
+        current_to_ue_code = current_to_ue_code.replace('UDIM_TYPE', self._udim_type_str)
+        current_to_ue_code = current_to_ue_code.replace('MASKED', self._material_masked_str)
+        current_to_ue_code = current_to_ue_code.replace('TRANSLUCENT', self._material_translucent_str)
 
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
 
@@ -251,10 +281,12 @@ class ue_sync(QtCore.QObject):
         self._ui.auto_sync.setChecked(False)
 
     def ue_import_mesh(self, target_path:str, mesh_path:str, callback:callable):
-        current_to_ue_code = "import_mesh_and_swap('PATH', 'TARGET', 'NAME')"
+        current_to_ue_code = "import_mesh_and_swap('PATH', 'TARGET', 'NAME', UDMI_TYPE, SCALE)"
         current_to_ue_code = current_to_ue_code.replace('PATH', mesh_path)
         current_to_ue_code = current_to_ue_code.replace('TARGET', target_path)
         current_to_ue_code = current_to_ue_code.replace('NAME', mesh_path[mesh_path.rfind("/") + 1 :mesh_path.rfind(".")])
+        current_to_ue_code = current_to_ue_code.replace('UDMI_TYPE', self._udim_type_str)
+        current_to_ue_code = current_to_ue_code.replace('SCALE', self._mesh_scale_str)
 
         self._ue_sync_remote.add_command(ue_sync_command(self._import_mesh_ue_code, lambda: self.sync_error.emit("sync_error")))
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, 

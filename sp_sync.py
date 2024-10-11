@@ -45,6 +45,7 @@ class sp_sync:
     _current_preset:substance_painter.export.ResourceExportPreset = None
     _export_sync_button_type:bool = False
     _current_mesh_name:str = ""
+    _current_udim_type:bool = False
 
     _sp_sync_ue:ue_sync
     _load_type:bool = False
@@ -118,12 +119,29 @@ class sp_sync:
         for texture_set in substance_painter.textureset.all_texture_sets():
             self._current_set_names.append(texture_set.name())
 
+    def _get_project_udim_type(self)->bool:
+        """
+        获取项目是否支持UDIM
+        可能不科学
+        """
+        for texture_set in substance_painter.textureset.all_texture_sets():
+            return texture_set.has_uv_tiles()
+        return False
+
     def _project_open_event(self, state):
         """
         项目打开
         """
         
         self._current_preset = None
+
+        self._sp_sync_ue.set_material_masked(False)
+        self._sp_sync_ue.set_material_translucent(False)
+
+        self._ui.material_type.setCurrentIndex(0)
+
+        self._sp_sync_ue.set_mesh_scale(100)
+        self._ui.mesh_scale.setValue(100)
 
         self._export_all_set()
 
@@ -144,6 +162,9 @@ class sp_sync:
         
         if self._ui.sync_view.isChecked():
             self._sp_sync_ue.sync_ue_camera_init()
+
+        self._current_udim_type = self._get_project_udim_type()
+        self._sp_sync_ue.set_udim_type(self._current_udim_type)
         
     def _project_about_to_close_event(self, state):
 
@@ -180,13 +201,16 @@ class sp_sync:
             if self._ui.create_material.isChecked():
                 if self._current_preset.resource_id.name == "SPSYNCDefault":
                     self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
-                    self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._current_mesh_name, self._get_texture_sets(), self._reset_all_freeze_ui)
+                    self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._current_mesh_name, self._current_set_names, self._reset_all_freeze_ui)
                 else:
                     self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list, self._reset_all_freeze_ui)
                     self._ui.create_material.setChecked(False)
                     QtWidgets.QMessageBox.information(self._main_widget, "Warning", "The texture output configuration must be 'SPSYNCDefault' to generate materials!")
             else:
                 self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list, self._reset_all_freeze_ui)
+
+            #清空当前修改材质列表
+            self._current_set_names = []
 
     def _select_file_button_click(self):
         
@@ -291,7 +315,7 @@ class sp_sync:
 
         for _current_set_names in self._current_set_names:
             export_list.append({"rootPath" : _current_set_names})
-        self._current_set_names = []
+        
         self._on_layerstack_changed(None)
 
         newPreset = {
@@ -374,6 +398,20 @@ class sp_sync:
 
     def _help_video_click(self):
         webbrowser.open("https://www.bilibili.com/video/BV1XS11YKEJe/")
+
+    def _material_type_changed(self, index:int):
+        if index == 0:
+            self._sp_sync_ue.set_material_masked(False)
+            self._sp_sync_ue.set_material_translucent(False)
+        elif index == 1:
+            self._sp_sync_ue.set_material_masked(True)
+            self._sp_sync_ue.set_material_translucent(False)
+        elif index == 2:
+            self._sp_sync_ue.set_material_masked(False)
+            self._sp_sync_ue.set_material_translucent(True)
+
+    def _mesh_scale_changed(self):
+        self._sp_sync_ue.set_mesh_scale(self._ui.mesh_scale.value())
      
     def _config_ui(self):
         """
@@ -400,6 +438,10 @@ class sp_sync:
         self._ui.sync_mesh_button.clicked.connect(self._sync_button_mesh_click)
 
         self._ui.help_video.clicked.connect(self._help_video_click)
+
+        self._ui.material_type.currentIndexChanged.connect(self._material_type_changed)
+
+        self._ui.mesh_scale.valueChanged.connect(self._mesh_scale_changed)
 
         self._ui.tabWidget.setEnabled(False)
 

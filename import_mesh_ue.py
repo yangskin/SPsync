@@ -3,7 +3,7 @@ import unreal
 editor_actor_subsystem:unreal.EditorActorSubsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 unreal_editor_subsystem:unreal.UnrealEditorSubsystem = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
 
-def import_mesh(path:str, target_path:str, name:str)->str:
+def import_mesh(path:str, target_path:str, name:str, scale:float)->str:
     task = unreal.AssetImportTask()
     task.filename = path
     task.destination_path = target_path
@@ -21,7 +21,7 @@ def import_mesh(path:str, target_path:str, name:str)->str:
     fbx_static_mesh_import_data = unreal.FbxStaticMeshImportData()
     fbx_static_mesh_import_data.force_front_x_axis =True
     fbx_static_mesh_import_data.combine_meshes = True
-    fbx_static_mesh_import_data.import_uniform_scale = 100.0
+    fbx_static_mesh_import_data.import_uniform_scale = scale
     options.static_mesh_import_data = fbx_static_mesh_import_data
     task.options = options
 
@@ -29,13 +29,13 @@ def import_mesh(path:str, target_path:str, name:str)->str:
     aset_tools.import_asset_tasks([task])
     return target_path + "/" + name
 
-def swap_meshes_and_set_material(path:str, materials_folder:str, name:str):
+def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:bool):
     static_mesh:unreal.StaticMesh = unreal.EditorAssetLibrary.load_asset(path)
     materials = static_mesh.static_materials
     asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
     
     for index in range(len(materials)): 
-        material_instance_path = find_asset(materials_folder, "MI_" + name + "_" + str(materials[index].material_slot_name))
+        material_instance_path = find_asset(materials_folder, ("M_" if udmi else "MI_") + name + "_" + str(materials[index].material_slot_name))
         if material_instance_path != None:
             static_mesh.set_material(index, asset_library.load_asset(material_instance_path[0 : material_instance_path.rfind(".")]))
 
@@ -76,6 +76,6 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str):
     else:
         static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
 
-def import_mesh_and_swap(path:str, target:str, name:str):
-    swap_meshes_and_set_material(import_mesh(path, target, name), target, name)
+def import_mesh_and_swap(path:str, target:str, name:str, udmi:bool, scale:float):
+    swap_meshes_and_set_material(import_mesh(path, target, name, scale), target, name, udmi)
     return True

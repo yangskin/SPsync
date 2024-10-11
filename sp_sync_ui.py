@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'sp_sync_ui.ui'
 ##
-## Created by: Qt User Interface Compiler version 5.15.2
+## Created by: Qt User Interface Compiler version 6.7.3
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -28,25 +28,35 @@ class Ui_SPsync(object):
         SPsync.resize(380, 526)
         self.gridLayout_2 = QGridLayout(SPsync)
         self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.horizontalLayout_2 = QHBoxLayout()
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.horizontalLayout_2.setContentsMargins(-1, 0, -1, -1)
+
+        self.gridLayout_2.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
+
+        self.verticalSpacer = QSpacerItem(20, 206, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_2.addItem(self.verticalSpacer, 2, 0, 1, 1)
+
         self.tabWidget = QTabWidget(SPsync)
         self.tabWidget.setObjectName(u"tabWidget")
         self.tabWidget.setEnabled(True)
         self.tabWidget.setAutoFillBackground(True)
-        self.tabWidget.setTabPosition(QTabWidget.North)
+        self.tabWidget.setTabPosition(QTabWidget.TabPosition.North)
         self.tabWidget.setTabsClosable(False)
         self.tabWidget.setMovable(True)
         self.tabWidget.setTabBarAutoHide(False)
         self.unreal = QWidget()
         self.unreal.setObjectName(u"unreal")
         self.unreal.setEnabled(True)
-        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.unreal.sizePolicy().hasHeightForWidth())
         self.unreal.setSizePolicy(sizePolicy)
         self.unreal.setSizeIncrement(QSize(0, 0))
         self.unreal.setBaseSize(QSize(0, 0))
-        self.unreal.setLayoutDirection(Qt.LeftToRight)
+        self.unreal.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.unreal.setAutoFillBackground(False)
         self.verticalLayout_2 = QVBoxLayout(self.unreal)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
@@ -93,15 +103,55 @@ class Ui_SPsync(object):
 
         self.verticalLayout_2.addWidget(self.auto_sync)
 
-        self.create_material = QCheckBox(self.unreal)
+        self.groupBox = QGroupBox(self.unreal)
+        self.groupBox.setObjectName(u"groupBox")
+        self.groupBox.setEnabled(True)
+        self.verticalLayout_3 = QVBoxLayout(self.groupBox)
+        self.verticalLayout_3.setSpacing(5)
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.verticalLayout_3.setContentsMargins(5, 5, 5, 5)
+        self.create_material = QCheckBox(self.groupBox)
         self.create_material.setObjectName(u"create_material")
         self.create_material.setChecked(True)
 
-        self.verticalLayout_2.addWidget(self.create_material)
+        self.verticalLayout_3.addWidget(self.create_material)
+
+        self.material_type = QComboBox(self.groupBox)
+        self.material_type.addItem("")
+        self.material_type.addItem("")
+        self.material_type.addItem("")
+        self.material_type.setObjectName(u"material_type")
+
+        self.verticalLayout_3.addWidget(self.material_type)
+
+
+        self.verticalLayout_2.addWidget(self.groupBox)
+
+        self.groupBox_2 = QGroupBox(self.unreal)
+        self.groupBox_2.setObjectName(u"groupBox_2")
+        self.verticalLayout_4 = QVBoxLayout(self.groupBox_2)
+        self.verticalLayout_4.setSpacing(5)
+        self.verticalLayout_4.setObjectName(u"verticalLayout_4")
+        self.verticalLayout_4.setContentsMargins(5, 5, 5, 5)
+        self.label_2 = QLabel(self.groupBox_2)
+        self.label_2.setObjectName(u"label_2")
+
+        self.verticalLayout_4.addWidget(self.label_2)
+
+        self.mesh_scale = QDoubleSpinBox(self.groupBox_2)
+        self.mesh_scale.setObjectName(u"mesh_scale")
+        self.mesh_scale.setMaximum(99999.899999999994179)
+        self.mesh_scale.setSingleStep(0.100000000000000)
+        self.mesh_scale.setValue(100.000000000000000)
+
+        self.verticalLayout_4.addWidget(self.mesh_scale)
+
+
+        self.verticalLayout_2.addWidget(self.groupBox_2)
 
         self.sync_view = QToolButton(self.unreal)
         self.sync_view.setObjectName(u"sync_view")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         sizePolicy1.setHorizontalStretch(0)
         sizePolicy1.setVerticalStretch(0)
         sizePolicy1.setHeightForWidth(self.sync_view.sizePolicy().hasHeightForWidth())
@@ -109,7 +159,7 @@ class Ui_SPsync(object):
         self.sync_view.setMinimumSize(QSize(0, 50))
         self.sync_view.setTabletTracking(False)
         self.sync_view.setAcceptDrops(False)
-        self.sync_view.setLayoutDirection(Qt.LeftToRight)
+        self.sync_view.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.sync_view.setAutoFillBackground(False)
         self.sync_view.setCheckable(True)
         self.sync_view.setChecked(False)
@@ -123,7 +173,7 @@ class Ui_SPsync(object):
 
         self.verticalLayout_2.addLayout(self.horizontalLayout_3)
 
-        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_2.addItem(self.verticalSpacer_2)
 
@@ -146,23 +196,13 @@ class Ui_SPsync(object):
 
         self.verticalLayout.addWidget(self.textBrowser)
 
-        self.verticalSpacer_3 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.verticalSpacer_3 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout.addItem(self.verticalSpacer_3)
 
         self.tabWidget.addTab(self.Help, "")
 
-        self.gridLayout_2.addWidget(self.tabWidget, 1, 0, 1, 1)
-
-        self.horizontalLayout_2 = QHBoxLayout()
-        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.horizontalLayout_2.setContentsMargins(-1, 0, -1, -1)
-
-        self.gridLayout_2.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
-
-        self.verticalSpacer = QSpacerItem(20, 206, QSizePolicy.Minimum, QSizePolicy.Expanding)
-
-        self.gridLayout_2.addItem(self.verticalSpacer, 2, 0, 1, 1)
+        self.gridLayout_2.addWidget(self.tabWidget, 2, 1, 1, 1)
 
 
         self.retranslateUi(SPsync)
@@ -180,16 +220,26 @@ class Ui_SPsync(object):
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
         self.sync_mesh_button.setText(QCoreApplication.translate("SPsync", u"SYNC(Mesh)", None))
         self.auto_sync.setText(QCoreApplication.translate("SPsync", u"Auto Export Texture", None))
+        self.groupBox.setTitle(QCoreApplication.translate("SPsync", u"Material", None))
         self.create_material.setText(QCoreApplication.translate("SPsync", u"Create Materials", None))
+        self.material_type.setItemText(0, QCoreApplication.translate("SPsync", u"Opaque", None))
+        self.material_type.setItemText(1, QCoreApplication.translate("SPsync", u"Masked", None))
+        self.material_type.setItemText(2, QCoreApplication.translate("SPsync", u"Translucent", None))
+
+        self.groupBox_2.setTitle(QCoreApplication.translate("SPsync", u"Mesh", None))
+        self.label_2.setText(QCoreApplication.translate("SPsync", u"Scale", None))
         self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.unreal), QCoreApplication.translate("SPsync", u"Unreal", None))
         self.help_video.setText(QCoreApplication.translate("SPsync", u"Video Tutorial", None))
         self.textBrowser.setHtml(QCoreApplication.translate("SPsync", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:'SimSun'; font-size:6pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:7pt;\">Emial    : yangskin@163.com</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:7pt;\">BiliBili : https://space.bilibili.com/249466</span></p></body></html>", None))
+"hr { height: 1px; border-width: 0; }\n"
+"li.unchecked::marker { content: \"\\2610\"; }\n"
+"li.checked::marker { content: \"\\2612\"; }\n"
+"</style></head><body style=\" font-family:'Microsoft YaHei UI'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'SimSun'; font-size:7pt;\">Emial    : yangskin@163.com</span></p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'SimSun'; font-size:7pt;\">BiliBili : https://space.bilibili.com/249466</span></p></body></html>", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Help), QCoreApplication.translate("SPsync", u"Help", None))
     # retranslateUi
 
