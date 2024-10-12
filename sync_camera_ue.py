@@ -45,7 +45,7 @@ def exit_sync_camera():
     if current_camera_actor != None:
         editor_actor_subsystem.destroy_actor(current_camera_actor)
 
-def sync_camera(px:float, py:float, pz:float, rx:float, ry:float, rz:float, fov:float):
+def sync_camera(px:float, py:float, pz:float, rx:float, ry:float, rz:float, fov:float, scale:float):
     global camera_actor
 
     selected_actors = editor_actor_subsystem.get_selected_level_actors()
@@ -56,7 +56,7 @@ def sync_camera(px:float, py:float, pz:float, rx:float, ry:float, rz:float, fov:
 
     positon:unreal.Vector = unreal.Vector(px, py, pz)
     positon = unreal.Vector(positon.z , -positon.x, positon.y)
-    positon = unreal.Vector.multiply_float(positon, 100)
+    positon = unreal.Vector.multiply_float(positon, scale)
     rotator:unreal.Rotator = maya_to_unreal_rotation(rx, ry, rz)
 
     """

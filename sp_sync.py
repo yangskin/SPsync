@@ -138,11 +138,6 @@ class sp_sync:
         self._sp_sync_ue.set_material_masked(False)
         self._sp_sync_ue.set_material_translucent(False)
 
-        self._ui.material_type.setCurrentIndex(0)
-
-        self._sp_sync_ue.set_mesh_scale(100)
-        self._ui.mesh_scale.setValue(100)
-
         self._export_all_set()
 
         self._reset_all_freeze_ui(True)
@@ -365,6 +360,8 @@ class sp_sync:
         metadata.set("export_path", self._ui.file_path.text())
         metadata.set("origin_export_path", self._origin_export_path)
         metadata.set("current_preset", self._ui.select_preset.currentText())
+        metadata.set("material_type", self._ui.material_type.currentIndex())
+        metadata.set("mesh_scale", self._ui.mesh_scale.value())
 
     def _load_data(self):
         """
@@ -374,6 +371,17 @@ class sp_sync:
         metadata:substance_painter.project.Metadata = substance_painter.project.Metadata("sp_sync")
         self._ui.file_path.setText(metadata.get("export_path"))
         self._origin_export_path = metadata.get("origin_export_path")
+        key_list = metadata.list()
+        if "material_type" in key_list:
+            self._ui.material_type.setCurrentIndex(metadata.get("material_type"))
+        else:
+            self._ui.material_type.setCurrentIndex(0)
+        if "mesh_scale" in key_list:
+            self._ui.mesh_scale.setValue(metadata.get("mesh_scale"))
+            self._sp_sync_ue.set_mesh_scale(metadata.get("mesh_scale"))
+        else:
+            self._ui.mesh_scale.setValue(100)
+            self._sp_sync_ue.set_mesh_scale(100)
 
         current_preset = metadata.get("current_preset")
 
@@ -410,8 +418,11 @@ class sp_sync:
             self._sp_sync_ue.set_material_masked(False)
             self._sp_sync_ue.set_material_translucent(True)
 
+        self._save_data()
+
     def _mesh_scale_changed(self):
         self._sp_sync_ue.set_mesh_scale(self._ui.mesh_scale.value())
+        self._save_data()
      
     def _config_ui(self):
         """
@@ -428,10 +439,6 @@ class sp_sync:
 
         #绑定同步按钮事件
         self._ui.sync_button.clicked.connect(self._sync_button_click)
-
-        #绑定列表选中事件
-        #self._ui.select_preset.highlighted.connect(self._select_preset_changed)
-        #self._ui.select_preset.currentIndexChanged.connect(self._select_preset_changed)
 
         self._ui.sync_view.clicked.connect(self._view_sync_click)
 

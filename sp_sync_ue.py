@@ -133,6 +133,7 @@ class ue_sync_camera(QtCore.QObject):
     _ue_sync_remote:ue_sync_remote
     sync_error = QtCore.Signal(str)
     thread_loop_type:threading.Event = threading.Event()
+    model_scale:float = 1
     
     def __init__(self, ue_sync_remote_instance:ue_sync_remote):
         super().__init__()
@@ -151,7 +152,7 @@ class ue_sync_camera(QtCore.QObject):
                 pos = camera.position
                 rot = camera.rotation
                 code:str = "".join( 
-                    ["sync_camera(" , str(pos[0]) , "," , str(pos[1]) , "," , str(pos[2]) , "," , str(rot[0]) , "," , str(rot[1]) , "," , str(rot[2]) , "," , str(camera.field_of_view) , ")"]
+                    ["sync_camera(" , str(pos[0]) , "," , str(pos[1]) , "," , str(pos[2]) , "," , str(rot[0]) , "," , str(rot[1]) , "," , str(rot[2]) , "," , str(camera.field_of_view) ,  ",", str(self.model_scale),")"]
                     )
                 self._ue_sync_remote.add_command(ue_sync_command(code, lambda: self.sync_error.emit("sync_error")))
                 
@@ -226,6 +227,7 @@ class ue_sync(QtCore.QObject):
             self._material_translucent_str = "False"
 
     def set_mesh_scale(self, scale:float):
+        self._ue_sync_camera.model_scale = scale
         self._mesh_scale_str = str(scale)
 
     def _show_help_window(self):
