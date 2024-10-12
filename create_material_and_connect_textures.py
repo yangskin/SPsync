@@ -2,6 +2,18 @@ import unreal
 
 asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
 
+def set_texture_srgb_off(folder_path, name):
+    texture_path = find_asset(folder_path, name)
+    if texture_path != None:
+        texture:unreal.Texture2D = asset_library.load_asset(texture_path[0 : texture_path.rfind(".")])
+        texture.set_editor_property("srgb", False)
+
+def set_texture_normal(folder_path, name):
+    texture_path = find_asset(folder_path, name)
+    if texture_path != None:
+        texture = asset_library.load_asset(texture_path[0 : texture_path.rfind(".")])
+        texture.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_NORMALMAP)
+
 def get_texture_parameter_value(parameter_name, folder_path, name, srgb_type = True, is_normal = False):
     texture_path = find_asset(folder_path, name)
     if texture_path != None:
@@ -37,12 +49,15 @@ def create_material_and_connect_texture():
                 es_name = bco_name
 
             if udim_type:
+                set_texture_srgb_off(target_path, mra_name)
+                set_texture_normal(target_path, n_name)
                 create_material(material_path, 
                                 target_path + '/' + bco_name,
                                 target_path + '/' + es_name,   
                                 target_path + '/' + mra_name,
                                 target_path + '/' + n_name,
                                 True, masked, translucent)
+                
             else:
                 bco = get_texture_parameter_value("BCO", target_path, bco_name)
                 mra = get_texture_parameter_value("MRA", target_path, mra_name, False)
