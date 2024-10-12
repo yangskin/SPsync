@@ -4,6 +4,10 @@ editor_actor_subsystem:unreal.EditorActorSubsystem = unreal.get_editor_subsystem
 unreal_editor_subsystem:unreal.UnrealEditorSubsystem = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
 
 def import_mesh(path:str, target_path:str, name:str, scale:float)->str:
+    asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
+    if asset_library.does_asset_exist(target_path + "/" + name):
+        asset_library.delete_asset(target_path + "/" + name)
+    
     task = unreal.AssetImportTask()
     task.filename = path
     task.destination_path = target_path
@@ -75,6 +79,7 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:
         editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
     else:
         static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
+        editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
 
 def import_mesh_and_swap(path:str, target:str, name:str, udmi:bool, scale:float):
     swap_meshes_and_set_material(import_mesh(path, target, name, scale), target, name, udmi)
