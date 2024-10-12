@@ -31,8 +31,8 @@ def import_textures():
         file_path = folder_path + "/" + file_name
 
         if udim_type:
-            file_name = file_name[:file_name.rfind("_")]
-            file_path = file_path[:file_path.rfind("_")]
+            file_name = file_name[:file_name.rfind(".")]
+            file_path = file_path[:file_path.rfind(".")]
 
         if asset_library.do_assets_exist([file_path]):
             current_texture:unreal.Texture2D = asset_library.load_asset(file_path)

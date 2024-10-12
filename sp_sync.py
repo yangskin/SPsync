@@ -166,9 +166,10 @@ class sp_sync:
         self._load_type = False
 
         self._ui.tabWidget.setEnabled(False)
-
         self._ui.file_path.setText("")
         self._ui.select_preset.currentIndexChanged.disconnect(self._select_preset_changed)
+        self._ui.material_type.currentIndexChanged.disconnect(self._material_type_changed)
+        self._ui.mesh_scale.valueChanged.disconnect(self._mesh_scale_changed)
         self._ui.select_preset.clear()
         self._clean_temp_folder()
 
@@ -374,8 +375,10 @@ class sp_sync:
         key_list = metadata.list()
         if "material_type" in key_list:
             self._ui.material_type.setCurrentIndex(metadata.get("material_type"))
+            self._set_material_type_changed(metadata.get("material_type"))
         else:
             self._ui.material_type.setCurrentIndex(0)
+            self._set_material_type_changed(0)
         if "mesh_scale" in key_list:
             self._ui.mesh_scale.setValue(metadata.get("mesh_scale"))
             self._sp_sync_ue.set_mesh_scale(metadata.get("mesh_scale"))
@@ -392,8 +395,10 @@ class sp_sync:
             for preset in substance_painter.export.list_resource_export_presets(): 
                 if self._ui.select_preset.currentText() == preset.resource_id.name:
                     self._current_preset = preset
-        
+
         self._ui.select_preset.currentIndexChanged.connect(self._select_preset_changed)
+        self._ui.material_type.currentIndexChanged.connect(self._material_type_changed)
+        self._ui.mesh_scale.valueChanged.connect(self._mesh_scale_changed)
         self._ui.tabWidget.setEnabled(True)
         self._load_type = True
 
@@ -407,7 +412,7 @@ class sp_sync:
     def _help_video_click(self):
         webbrowser.open("https://www.bilibili.com/video/BV1XS11YKEJe/")
 
-    def _material_type_changed(self, index:int):
+    def _set_material_type_changed(self, index:int):
         if index == 0:
             self._sp_sync_ue.set_material_masked(False)
             self._sp_sync_ue.set_material_translucent(False)
@@ -418,6 +423,8 @@ class sp_sync:
             self._sp_sync_ue.set_material_masked(False)
             self._sp_sync_ue.set_material_translucent(True)
 
+    def _material_type_changed(self, index:int):
+        self._set_material_type_changed(index)
         self._save_data()
 
     def _mesh_scale_changed(self):
@@ -445,10 +452,6 @@ class sp_sync:
         self._ui.sync_mesh_button.clicked.connect(self._sync_button_mesh_click)
 
         self._ui.help_video.clicked.connect(self._help_video_click)
-
-        self._ui.material_type.currentIndexChanged.connect(self._material_type_changed)
-
-        self._ui.mesh_scale.valueChanged.connect(self._mesh_scale_changed)
 
         self._ui.tabWidget.setEnabled(False)
 
