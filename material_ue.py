@@ -28,8 +28,6 @@ def create_material(path:str, bco_path:str, es_path:str, mra_path:str, n_path:st
             dither_function_call.set_material_function(dither_function)
             unreal.MaterialEditingLibrary.connect_material_expressions(base_color, "a", dither_function_call, "Alpha Threshold")
             unreal.MaterialEditingLibrary.connect_material_property(dither_function_call, "Result", unreal.MaterialProperty.MP_OPACITY_MASK)
-
-            unreal.MaterialEditingLibrary.connect_material_property(base_color, "a", unreal.MaterialProperty.MP_OPACITY)
           
             emissive_scattering:unreal.MaterialExpressionTextureSampleParameter2D = unreal.MaterialEditingLibrary.create_material_expression(material, unreal.MaterialExpressionTextureSampleParameter2D)
             emissive_scattering.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_VIRTUAL_COLOR if udmi else unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
@@ -53,6 +51,9 @@ def create_material(path:str, bco_path:str, es_path:str, mra_path:str, n_path:st
             unreal.MaterialEditingLibrary.connect_material_property(metallic_roughness_ao, "r", unreal.MaterialProperty.MP_METALLIC)
             unreal.MaterialEditingLibrary.connect_material_property(metallic_roughness_ao, "g", unreal.MaterialProperty.MP_ROUGHNESS)
             unreal.MaterialEditingLibrary.connect_material_property(metallic_roughness_ao, "b", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION)
+            one_mius:unreal.MaterialExpressionOneMinus = unreal.MaterialEditingLibrary.create_material_expression(material, unreal.MaterialExpressionOneMinus)
+            unreal.MaterialEditingLibrary.connect_material_expressions(metallic_roughness_ao, "a", one_mius, "")
+            unreal.MaterialEditingLibrary.connect_material_property(one_mius, "", unreal.MaterialProperty.MP_OPACITY)
 
             normal:unreal.MaterialExpressionTextureSampleParameter2D = unreal.MaterialEditingLibrary.create_material_expression(material, unreal.MaterialExpressionTextureSampleParameter2D)
             normal.set_editor_property("parameter_name", "N")

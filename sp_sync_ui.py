@@ -214,7 +214,7 @@ class Ui_SPsync(object):
     # setupUi
 
     def retranslateUi(self, SPsync):
-        SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync 0.94", None))
+        SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync 0.95", None))
         self.label.setText(QCoreApplication.translate("SPsync", u"Export Preset:", None))
         self.file_select.setText(QCoreApplication.translate("SPsync", u"Selet Path", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
