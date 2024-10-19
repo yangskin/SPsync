@@ -69,6 +69,10 @@ class sp_sync:
         self._config_ui()
 
         self._sp_sync_ue = ue_sync(self._ui, self._main_widget)
+
+        if substance_painter.project.is_open() and (not substance_painter.resource.Shelf("starter_assets").is_crawling()):
+            self._loade_export_presets()
+            self._load_data()
         
         #绑定贴图导出事件
         substance_painter.event.DISPATCHER.connect(
@@ -453,7 +457,8 @@ class sp_sync:
 
         self._ui.help_video.clicked.connect(self._help_video_click)
 
-        self._ui.tabWidget.setEnabled(False)
-
         self.plugin_widgets.append(self._main_widget)
         substance_painter.ui.add_dock_widget(self._main_widget)
+
+        if (not substance_painter.project.is_open()) and (not substance_painter.project.is_busy()):
+            self._ui.tabWidget.setEnabled(False)
