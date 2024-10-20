@@ -19,7 +19,7 @@ def import_textures():
     if udim_type:
         new_paths = [] 
         for path in paths:
-            if "1001" in path:
+            if "1001" in path[path.rfind("_"):]:
                 new_paths.append(path)
         paths = new_paths
 
