@@ -211,6 +211,8 @@ class sp_sync:
 
             #清空当前修改材质列表
             self._current_set_names = []
+            self._on_layerstack_changed(None)
+
 
     def _select_file_button_click(self):
         
