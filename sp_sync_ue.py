@@ -173,8 +173,6 @@ class ue_sync(QtCore.QObject):
     _ue_sync_camera_thread:threading.Thread = None
     _ue_sync_remote:ue_sync_remote = ue_sync_remote()
     _udim_type_str:str = "False"
-    _material_masked_str:str = "False"
-    _material_translucent_str:str = "False"
     _mesh_scale_str:str = "1"
     sync_error = QtCore.Signal(str)
     
@@ -256,21 +254,23 @@ class ue_sync(QtCore.QObject):
                                                          callback, 
                                                          remote_execution.MODE_EVAL_STATEMENT))
           
-    def sync_ue_create_material_and_connect_textures(self, target_path, mesh_name, material_names:List[str], callback:callable):
+    def sync_ue_create_material_and_connect_textures(self, target_path, mesh_name, material_names:List[str], material_types, callback:callable):
         self._ue_sync_remote.add_command(ue_sync_command(self._material_ue_code, lambda: self.sync_error.emit("sync_error")))
         self._ue_sync_remote.add_command(ue_sync_command(self._material_instance_ue_code, lambda: self.sync_error.emit("sync_error")))
 
         current_to_ue_code:str = self._create_material_and_connect_textures_code
         current_to_ue_code = current_to_ue_code.replace('TARGET_PATH', target_path)
+
         material_names_str = ""
         for material_name in material_names:
-            material_names_str += "  '"+ material_name + "',\n"
-        current_to_ue_code = current_to_ue_code.replace('MATERIAL_NAMES', material_names_str)
+            for material_type in material_types:
+                if material_name == material_type[0]:
+                    material_names_str += "  '"+ material_name + ":" + material_type[1] + "',\n"
+
+        current_to_ue_code = current_to_ue_code.replace('MATERIAL_NAME_TYPES', material_names_str)
         current_to_ue_code = current_to_ue_code.replace('MESH_NAME', mesh_name)
         current_to_ue_code = current_to_ue_code.replace('UDIM_TYPE', self._udim_type_str)
-        current_to_ue_code = current_to_ue_code.replace('MASKED', self._material_masked_str)
-        current_to_ue_code = current_to_ue_code.replace('TRANSLUCENT', self._material_translucent_str)
-
+ 
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
 
         self._ue_sync_remote.add_command(ue_sync_command("create_material_and_connect_texture()", 

@@ -131,6 +131,22 @@ class sp_sync:
         for texture_set in substance_painter.textureset.all_texture_sets():
             return texture_set.has_uv_tiles()
         return False
+    
+    def _get_texture_set_material_type(self):
+        texture_set_list:List[substance_painter.textureset.TextureSet] = substance_painter.textureset.all_texture_sets()
+        request = []
+        for texture_set in texture_set_list:
+            current_material_type:str = "opaque"
+            for stack in texture_set.all_stacks():
+                for channel in stack.all_channels().keys():
+                    if channel == substance_painter.textureset.ChannelType.Opacity:
+                        current_material_type = "masked"
+                    if channel == substance_painter.textureset.ChannelType.Translucency:
+                        current_material_type = "translucency"
+            request.append([texture_set.name(), current_material_type])
+        
+        return request
+
 
     def _project_open_event(self, state):
         """
@@ -164,6 +180,9 @@ class sp_sync:
 
         self._current_udim_type = self._get_project_udim_type()
         self._sp_sync_ue.set_udim_type(self._current_udim_type)
+
+        self._get_texture_set_material_type()
+
         
     def _project_about_to_close_event(self, state):
 
@@ -172,7 +191,6 @@ class sp_sync:
         self._ui.tabWidget.setEnabled(False)
         self._ui.file_path.setText("")
         self._ui.select_preset.currentIndexChanged.disconnect(self._select_preset_changed)
-        self._ui.material_type.currentIndexChanged.disconnect(self._material_type_changed)
         self._ui.mesh_scale.valueChanged.disconnect(self._mesh_scale_changed)
         self._ui.select_preset.clear()
         self._clean_temp_folder()
@@ -201,7 +219,7 @@ class sp_sync:
             if self._ui.create_material.isChecked():
                 if self._current_preset.resource_id.name == "SPSYNCDefault":
                     self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list)
-                    self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._current_mesh_name, self._current_set_names, self._reset_all_freeze_ui)
+                    self._sp_sync_ue.sync_ue_create_material_and_connect_textures(self._ui.file_path.text(), self._current_mesh_name, self._current_set_names, self._get_texture_set_material_type(), self._reset_all_freeze_ui)
                 else:
                     self._sp_sync_ue.sync_ue_textures(self._ui.file_path.text(), export_file_list, self._reset_all_freeze_ui)
                     self._ui.create_material.setChecked(False)
@@ -379,12 +397,7 @@ class sp_sync:
         self._ui.file_path.setText(metadata.get("export_path"))
         self._origin_export_path = metadata.get("origin_export_path")
         key_list = metadata.list()
-        if "material_type" in key_list:
-            self._ui.material_type.setCurrentIndex(metadata.get("material_type"))
-            self._set_material_type_changed(metadata.get("material_type"))
-        else:
-            self._ui.material_type.setCurrentIndex(0)
-            self._set_material_type_changed(0)
+
         if "mesh_scale" in key_list:
             self._ui.mesh_scale.setValue(metadata.get("mesh_scale"))
             self._sp_sync_ue.set_mesh_scale(metadata.get("mesh_scale"))
@@ -403,7 +416,6 @@ class sp_sync:
                     self._current_preset = preset
 
         self._ui.select_preset.currentIndexChanged.connect(self._select_preset_changed)
-        self._ui.material_type.currentIndexChanged.connect(self._material_type_changed)
         self._ui.mesh_scale.valueChanged.connect(self._mesh_scale_changed)
         self._ui.tabWidget.setEnabled(True)
         self._load_type = True
@@ -417,21 +429,6 @@ class sp_sync:
 
     def _help_video_click(self):
         webbrowser.open("https://www.bilibili.com/video/BV1XS11YKEJe/")
-
-    def _set_material_type_changed(self, index:int):
-        if index == 0:
-            self._sp_sync_ue.set_material_masked(False)
-            self._sp_sync_ue.set_material_translucent(False)
-        elif index == 1:
-            self._sp_sync_ue.set_material_masked(True)
-            self._sp_sync_ue.set_material_translucent(False)
-        elif index == 2:
-            self._sp_sync_ue.set_material_masked(False)
-            self._sp_sync_ue.set_material_translucent(True)
-
-    def _material_type_changed(self, index:int):
-        self._set_material_type_changed(index)
-        self._save_data()
 
     def _mesh_scale_changed(self):
         self._sp_sync_ue.set_mesh_scale(self._ui.mesh_scale.value())
@@ -464,3 +461,4 @@ class sp_sync:
 
         if (not substance_painter.project.is_open()) and (not substance_painter.project.is_busy()):
             self._ui.tabWidget.setEnabled(False)
+            

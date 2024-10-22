@@ -8,17 +8,18 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-import substance_painter.application
-IsQt5 = substance_painter.application.version_info() < (10,1,0)
-
-if IsQt5 :
-    from PySide2.QtCore import *
-    from PySide2.QtGui import *
-    from PySide2.QtWidgets import *
-else :
-    from PySide6.QtCore import *
-    from PySide6.QtGui import *
-    from PySide6.QtWidgets import *
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBox,
+    QGridLayout, QGroupBox, QHBoxLayout, QLabel,
+    QLineEdit, QPushButton, QSizePolicy, QSpacerItem,
+    QTabWidget, QTextBrowser, QToolButton, QVBoxLayout,
+    QWidget)
 
 class Ui_SPsync(object):
     def setupUi(self, SPsync):
@@ -116,14 +117,6 @@ class Ui_SPsync(object):
 
         self.verticalLayout_3.addWidget(self.create_material)
 
-        self.material_type = QComboBox(self.groupBox)
-        self.material_type.addItem("")
-        self.material_type.addItem("")
-        self.material_type.addItem("")
-        self.material_type.setObjectName(u"material_type")
-
-        self.verticalLayout_3.addWidget(self.material_type)
-
 
         self.verticalLayout_2.addWidget(self.groupBox)
 
@@ -214,7 +207,7 @@ class Ui_SPsync(object):
     # setupUi
 
     def retranslateUi(self, SPsync):
-        SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync 0.95", None))
+        SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync 0.96", None))
         self.label.setText(QCoreApplication.translate("SPsync", u"Export Preset:", None))
         self.file_select.setText(QCoreApplication.translate("SPsync", u"Selet Path", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
@@ -222,10 +215,6 @@ class Ui_SPsync(object):
         self.auto_sync.setText(QCoreApplication.translate("SPsync", u"Auto Export Texture", None))
         self.groupBox.setTitle(QCoreApplication.translate("SPsync", u"Material", None))
         self.create_material.setText(QCoreApplication.translate("SPsync", u"Create Materials", None))
-        self.material_type.setItemText(0, QCoreApplication.translate("SPsync", u"Opaque", None))
-        self.material_type.setItemText(1, QCoreApplication.translate("SPsync", u"Masked", None))
-        self.material_type.setItemText(2, QCoreApplication.translate("SPsync", u"Translucent", None))
-
         self.groupBox_2.setTitle(QCoreApplication.translate("SPsync", u"Mesh", None))
         self.label_2.setText(QCoreApplication.translate("SPsync", u"Scale", None))
         self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))

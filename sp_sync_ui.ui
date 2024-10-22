@@ -14,7 +14,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>SPsync</string>
+   <string>SPsync 0.96</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
@@ -182,25 +182,6 @@
             <property name="checked">
              <bool>true</bool>
             </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="material_type">
-            <item>
-             <property name="text">
-              <string>Opaque</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Masked</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Translucent</string>
-             </property>
-            </item>
            </widget>
           </item>
          </layout>

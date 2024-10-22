@@ -1,6 +1,6 @@
 import unreal
 
-def create_material(path:str, bco_path:str, es_path:str, mra_path:str, n_path:str, udmi:bool, masked:bool, translucent:bool)->unreal.Material:
+def create_material(path:str, bco_path:str, es_path:str, mra_path:str, n_path:str, udmi:bool, material_type:str)->unreal.Material:
     asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
     if asset_library.do_assets_exist([path]):
         return asset_library.load_asset(path)
@@ -9,12 +9,12 @@ def create_material(path:str, bco_path:str, es_path:str, mra_path:str, n_path:st
         material:unreal.Material = unreal.AssetToolsHelpers.get_asset_tools().create_asset(asset_name=path[path.rfind("/") + 1:],package_path=path[0:path.rfind("/")],asset_class=unreal.Material,factory=material_factory)
         if material:
 
-            if masked:
+            if material_type == "masked":
                 material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED) 
 
-            if translucent:
+            if material_type == "translucency":
                 material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT) 
-                material.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE)
+            material.set_editor_property("translucency_lighting_mode", unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING)
             
             base_color:unreal.MaterialExpressionTextureSampleParameter2D = unreal.MaterialEditingLibrary.create_material_expression(material, unreal.MaterialExpressionTextureSampleParameter2D)
             base_color.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_VIRTUAL_COLOR if udmi else unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)

@@ -25,17 +25,19 @@ def get_texture_parameter_value(parameter_name, folder_path, name, srgb_type = T
     return None
 
 def create_material_and_connect_texture():
-    material_names = [
-    MATERIAL_NAMES
+    material_names_types = [
+    MATERIAL_NAME_TYPES
     ]
 
     target_path = "TARGET_PATH"
     mesh_name = "MESH_NAME"
     udim_type = UDIM_TYPE
-    masked = MASKED
-    translucent = TRANSLUCENT
 
-    for material_name in material_names:
+    for material_name_type in material_names_types:
+        material_name_type_split = material_name_type.split(":")
+        material_name = material_name_type_split[0]
+        material_type = material_name_type_split[1]
+
         material_path = target_path + "/" + ("M_" if udim_type else "MI_") + mesh_name + "_" + material_name
 
         if not asset_library.do_assets_exist([material_path]):
@@ -56,7 +58,7 @@ def create_material_and_connect_texture():
                                 target_path + '/' + es_name,   
                                 target_path + '/' + mra_name,
                                 target_path + '/' + n_name,
-                                True, masked, translucent)
+                                True, material_type)
                 
             else:
                 bco = get_texture_parameter_value("BCO", target_path, bco_name)
@@ -69,7 +71,7 @@ def create_material_and_connect_texture():
                                                                                         target_path + '/' + es_name,   
                                                                                         target_path + '/' + mra_name,
                                                                                         target_path + '/' + n_name,
-                                                                                        False, masked, translucent)
+                                                                                        False, material_type)
 
                 texture_parameter_values = []
                 if bco != None:
