@@ -39,28 +39,28 @@ Supports automatic creation of materials and synchronization of maps, and provid
 
 - Copy it to this "C:\Users\username\Documents\Adobe\Adobe Substance 3D Painter\python\plugins" directory
 
-#### Version requirements
-  Substanc 3d Painter 10.1
-  Unreal 5.4 (theoretically 5.x and above are all supported but not tested)
-#### UE settings
+#### Version requirements</br>
+  Substanc 3d Painter 10.1</br>
+  Unreal 5.4 (theoretically 5.x and above are all supported but not tested)</br>
 
-a. Turn off the Use Less CPU when in Background option in Editor Preferences to prevent UE from freezing when synchronizing the viewport.
+#### UE settings</br>
+a. Turn off the Use Less CPU when in Background option in Editor Preferences to prevent UE from freezing when synchronizing the viewport.</br>
 ![](doc/4.png)
 
-b. Turn on Enable Remote Execution in Project Settings to support remote execution of Python scripts.
+b. Turn on Enable Remote Execution in Project Settings to support remote execution of Python scripts.</br>
 ![](doc/5.png)
 
-c. If UDIM support is required, you need to turn on Enable virtual texture support and Enable virtual textures for Opacity Mask under Project Settings->Rendering to support virtual textures.
+c. If UDIM support is required, you need to turn on Enable virtual texture support and Enable virtual textures for Opacity Mask under Project Settings->Rendering to support virtual textures.</br>
 ![](doc/6.png)
 
-### SP settings
-a. Python>Plugins Folder to open the python plugin directory.
+### SP settings</br>
+a. Python>Plugins Folder to open the python plugin directory.</br>
 ![](doc/7.png)
 
-b. Unzip to the Plugins directory and restart SP.
+b. Unzip to the Plugins directory and restart SP.</br>
 ![](doc/8.png)
 
-c. Make sure SPsync is enabled.
+c. Make sure SPsync is enabled.</br>
 ![](doc/9.png)
 ![](doc/10.png)
 
