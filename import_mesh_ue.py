@@ -57,7 +57,11 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:
     spawn_distance = 1000.0
     forward_vector = camera_rotation.get_forward_vector()
     spawn_location = camera_location + forward_vector * spawn_distance
-    
+
+    static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, spawn_location, unreal.Rotator(0, 0, camera_rotation.yaw).combine(unreal.Rotator(0, 0, -180)))
+    editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
+
+    '''
     ray_start = spawn_location
     ray_end = ray_start + unreal.Vector(0, 0, -10000)
     
@@ -80,6 +84,7 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:
     else:
         static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
         editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
+    '''
 
 def import_mesh_and_swap(path:str, target:str, name:str, udmi:bool, scale:float):
     swap_meshes_and_set_material(import_mesh(path, target, name, scale), target, name, udmi)
