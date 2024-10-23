@@ -26,6 +26,7 @@ Supports automatic creation of materials and synchronization of maps, and provid
 - Automatically assemble models
 - One-click synchronization of textures
 - Synchronize viewports
+- UDIM support
 
 ## Installation
 - UE menu 
@@ -36,8 +37,36 @@ Supports automatic creation of materials and synchronization of maps, and provid
   Edit>Project Settings>Engine>Rendering>Enable virtual texture support Check
   Edit>Project Settings>Engine>Rendering>Enable virtual texture for Opacity Mask Check
 
-  
 - Copy it to this "C:\Users\username\Documents\Adobe\Adobe Substance 3D Painter\python\plugins" directory
+
+#### Version requirements
+  Substanc 3d Painter 10.1
+  Unreal 5.4 (theoretically 5.x and above are all supported but not tested)
+#### UE settings
+
+a. Turn off the Use Less CPU when in Background option in Editor Preferences to prevent UE from freezing when synchronizing the viewport.
+![](doc/4.png)
+
+b. Turn on Enable Remote Execution in Project Settings to support remote execution of Python scripts.
+![](doc/5.png)
+
+c. If UDIM support is required, you need to turn on Enable virtual texture support and Enable virtual textures for Opacity Mask under Project Settings->Rendering to support virtual textures.
+![](doc/6.png)
+
+### SP settings
+a. Python>Plugins Folder to open the python plugin directory.
+![](doc/7.png)
+
+b. Unzip to the Plugins directory and restart SP.
+![](doc/8.png)
+
+c. Make sure SPsync is enabled.
+![](doc/9.png)
+![](doc/10.png)
+
+d. Plugin window
+![](doc/11.png)
+
 
 ## Contact
 - Email    : yangskin@163.com
