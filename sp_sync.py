@@ -385,7 +385,6 @@ class sp_sync:
         metadata.set("export_path", self._ui.file_path.text())
         metadata.set("origin_export_path", self._origin_export_path)
         metadata.set("current_preset", self._ui.select_preset.currentText())
-        metadata.set("material_type", self._ui.material_type.currentIndex())
         metadata.set("mesh_scale", self._ui.mesh_scale.value())
 
     def _load_data(self):
