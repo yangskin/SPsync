@@ -33,7 +33,7 @@ def import_mesh(path:str, target_path:str, name:str, scale:float)->str:
     aset_tools.import_asset_tasks([task])
     return target_path + "/" + name
 
-def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:bool):
+def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:bool, force_front_x_axis:bool = True):
     static_mesh:unreal.StaticMesh = unreal.EditorAssetLibrary.load_asset(path)
     materials = static_mesh.static_materials
     asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
@@ -58,7 +58,7 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:
     forward_vector = camera_rotation.get_forward_vector()
     spawn_location = camera_location + forward_vector * spawn_distance
 
-    static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, spawn_location, unreal.Rotator(0, 0, camera_rotation.yaw).combine(unreal.Rotator(0, 0, -180)))
+    static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, spawn_location, unreal.Rotator(0, 0, camera_rotation.yaw).combine(unreal.Rotator(0, 0, -270 if force_front_x_axis else -180)))
     editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
 
     '''
@@ -86,6 +86,6 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:
         editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
     '''
 
-def import_mesh_and_swap(path:str, target:str, name:str, udmi:bool, scale:float):
-    swap_meshes_and_set_material(import_mesh(path, target, name, scale), target, name, udmi)
+def import_mesh_and_swap(path:str, target:str, name:str, udmi:bool, scale:float, force_front_x_axis:bool = True):
+    swap_meshes_and_set_material(import_mesh(path, target, name, scale), target, name, udmi, force_front_x_axis)
     return True

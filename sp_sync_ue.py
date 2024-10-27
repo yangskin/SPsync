@@ -175,6 +175,7 @@ class ue_sync(QtCore.QObject):
     _ue_sync_remote:ue_sync_remote = ue_sync_remote()
     _udim_type_str:str = "False"
     _mesh_scale_str:str = "1"
+    _set_force_front_x_axis_str:str = "True"
     sync_error = QtCore.Signal(str)
     
     def __init__(self, ui: Ui_SPsync, main_widget:QtWidgets.QWidget) -> None:
@@ -231,6 +232,7 @@ class ue_sync(QtCore.QObject):
 
     def set_force_front_x_axis(self, force_front_x_axis:bool):
         self._ue_sync_camera.force_front_x_axis = force_front_x_axis
+        self._set_force_front_x_axis_str = str(force_front_x_axis)
 
     def _show_help_window(self):
         image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "Port link failed, check the relevant settings in UE!", self._main_widget)
@@ -287,13 +289,14 @@ class ue_sync(QtCore.QObject):
         self._ui.auto_sync.setChecked(False)
 
     def ue_import_mesh(self, target_path:str, mesh_path:str, callback:callable):
-        current_to_ue_code = "import_mesh_and_swap('PATH', 'TARGET', 'NAME', UDMI_TYPE, SCALE)"
+        current_to_ue_code = "import_mesh_and_swap('PATH', 'TARGET', 'NAME', UDMI_TYPE, SCALE, FORCE_FRONT_X_AXIS)"
         current_to_ue_code = current_to_ue_code.replace('PATH', mesh_path)
         current_to_ue_code = current_to_ue_code.replace('TARGET', target_path)
         current_to_ue_code = current_to_ue_code.replace('NAME', mesh_path[mesh_path.rfind("/") + 1 :mesh_path.rfind(".")])
         current_to_ue_code = current_to_ue_code.replace('UDMI_TYPE', self._udim_type_str)
         current_to_ue_code = current_to_ue_code.replace('SCALE', self._mesh_scale_str)
-
+        current_to_ue_code = current_to_ue_code.replace('FORCE_FRONT_X_AXIS', self._set_force_front_x_axis_str)
+        
         self._ue_sync_remote.add_command(ue_sync_command(self._import_mesh_ue_code, lambda: self.sync_error.emit("sync_error")))
         self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, 
                                                          lambda: self.sync_error.emit("sync_error"), 
