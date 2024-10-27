@@ -142,7 +142,17 @@ class Ui_SPsync(object):
 
         self.verticalLayout_2.addWidget(self.groupBox_2)
 
-        self.sync_view = QToolButton(self.unreal)
+        self.groupBox_3 = QGroupBox(self.unreal)
+        self.groupBox_3.setObjectName(u"groupBox_3")
+        self.verticalLayout_5 = QVBoxLayout(self.groupBox_3)
+        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
+        self.force_front_x_axis = QCheckBox(self.groupBox_3)
+        self.force_front_x_axis.setObjectName(u"force_front_x_axis")
+        self.force_front_x_axis.setChecked(True)
+
+        self.verticalLayout_5.addWidget(self.force_front_x_axis)
+
+        self.sync_view = QToolButton(self.groupBox_3)
         self.sync_view.setObjectName(u"sync_view")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         sizePolicy1.setHorizontalStretch(0)
@@ -157,7 +167,10 @@ class Ui_SPsync(object):
         self.sync_view.setCheckable(True)
         self.sync_view.setChecked(False)
 
-        self.verticalLayout_2.addWidget(self.sync_view)
+        self.verticalLayout_5.addWidget(self.sync_view)
+
+
+        self.verticalLayout_2.addWidget(self.groupBox_3)
 
         self.horizontalLayout_3 = QHBoxLayout()
         self.horizontalLayout_3.setSpacing(6)
@@ -217,6 +230,8 @@ class Ui_SPsync(object):
         self.create_material.setText(QCoreApplication.translate("SPsync", u"Create Materials", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("SPsync", u"Mesh", None))
         self.label_2.setText(QCoreApplication.translate("SPsync", u"Scale", None))
+        self.groupBox_3.setTitle(QCoreApplication.translate("SPsync", u"View", None))
+        self.force_front_x_axis.setText(QCoreApplication.translate("SPsync", u"Force front x axis", None))
         self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.unreal), QCoreApplication.translate("SPsync", u"Unreal", None))
         self.help_video.setText(QCoreApplication.translate("SPsync", u"Video Tutorial", None))

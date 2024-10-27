@@ -23,7 +23,7 @@ def import_mesh(path:str, target_path:str, name:str, scale:float)->str:
     options.import_as_skeletal = False
     options.set_editor_property("mesh_type_to_import", unreal.FBXImportType.FBXIT_STATIC_MESH)
     fbx_static_mesh_import_data = unreal.FbxStaticMeshImportData()
-    fbx_static_mesh_import_data.force_front_x_axis =True
+    #fbx_static_mesh_import_data.force_front_x_axis =True
     fbx_static_mesh_import_data.combine_meshes = True
     fbx_static_mesh_import_data.import_uniform_scale = scale
     options.static_mesh_import_data = fbx_static_mesh_import_data

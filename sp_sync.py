@@ -432,6 +432,9 @@ class sp_sync:
     def _mesh_scale_changed(self):
         self._sp_sync_ue.set_mesh_scale(self._ui.mesh_scale.value())
         self._save_data()
+
+    def _force_front_x_axis_changed(self):
+        self._sp_sync_ue.set_force_front_x_axis(self._ui.force_front_x_axis.isChecked())
      
     def _config_ui(self):
         """
@@ -454,6 +457,8 @@ class sp_sync:
         self._ui.sync_mesh_button.clicked.connect(self._sync_button_mesh_click)
 
         self._ui.help_video.clicked.connect(self._help_video_click)
+
+        self._ui.force_front_x_axis.clicked.connect(self._force_front_x_axis_changed)
 
         self.plugin_widgets.append(self._main_widget)
         substance_painter.ui.add_dock_widget(self._main_widget)

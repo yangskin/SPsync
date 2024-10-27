@@ -134,6 +134,7 @@ class ue_sync_camera(QtCore.QObject):
     sync_error = QtCore.Signal(str)
     thread_loop_type:threading.Event = threading.Event()
     model_scale:float = 1
+    force_front_x_axis:bool = True
     
     def __init__(self, ue_sync_remote_instance:ue_sync_remote):
         super().__init__()
@@ -147,12 +148,12 @@ class ue_sync_camera(QtCore.QObject):
                 camera = substance_painter.display.Camera.get_default_camera()
             except:
                 pass
-
+            
             if camera != None:
                 pos = camera.position
                 rot = camera.rotation
                 code:str = "".join( 
-                    ["sync_camera(" , str(pos[0]) , "," , str(pos[1]) , "," , str(pos[2]) , "," , str(rot[0]) , "," , str(rot[1]) , "," , str(rot[2]) , "," , str(camera.field_of_view) ,  ",", str(self.model_scale),")"]
+                    ["sync_camera(" , str(pos[0]) , "," , str(pos[1]) , "," , str(pos[2]) , "," , str(rot[0]) , "," , str(rot[1]) , "," , str(rot[2]) , "," , str(camera.field_of_view) ,  ",", str(self.model_scale),  ",", str(self.force_front_x_axis), ")"]
                     )
                 self._ue_sync_remote.add_command(ue_sync_command(code, lambda: self.sync_error.emit("sync_error")))
                 
@@ -227,6 +228,9 @@ class ue_sync(QtCore.QObject):
     def set_mesh_scale(self, scale:float):
         self._ue_sync_camera.model_scale = scale
         self._mesh_scale_str = str(scale)
+
+    def set_force_front_x_axis(self, force_front_x_axis:bool):
+        self._ue_sync_camera.force_front_x_axis = force_front_x_axis
 
     def _show_help_window(self):
         image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "Port link failed, check the relevant settings in UE!", self._main_widget)
