@@ -386,6 +386,7 @@ class sp_sync:
         metadata.set("origin_export_path", self._origin_export_path)
         metadata.set("current_preset", self._ui.select_preset.currentText())
         metadata.set("mesh_scale", self._ui.mesh_scale.value())
+        metadata.set("create_material", self._ui.create_material.isChecked())
 
     def _load_data(self):
         """
@@ -403,6 +404,9 @@ class sp_sync:
         else:
             self._ui.mesh_scale.setValue(100)
             self._sp_sync_ue.set_mesh_scale(100)
+        
+        if "create_material" in key_list:
+            self._ui.create_material.setChecked(metadata.get("create_material"))
 
         current_preset = metadata.get("current_preset")
 
@@ -435,6 +439,9 @@ class sp_sync:
 
     def _force_front_x_axis_changed(self):
         self._sp_sync_ue.set_force_front_x_axis(self._ui.force_front_x_axis.isChecked())
+
+    def _create_material_clicked(self):
+        self._save_data()
      
     def _config_ui(self):
         """
@@ -459,6 +466,8 @@ class sp_sync:
         self._ui.help_video.clicked.connect(self._help_video_click)
 
         self._ui.force_front_x_axis.clicked.connect(self._force_front_x_axis_changed)
+
+        self._ui.create_material.clicked.connect(self._create_material_clicked)
 
         self.plugin_widgets.append(self._main_widget)
         substance_painter.ui.add_dock_widget(self._main_widget)
