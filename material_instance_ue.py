@@ -26,5 +26,5 @@ def create_material_instance(parent_material:unreal.Material, path:str, material
             return material_instance
         
 def get_material_instance(path:str, bco_path:str, es_path:str, mra_path:str, n_path:str, udmi:bool, material_type:str)->unreal.MaterialInstanceConstant:
-    material = create_material(path[0:path.rfind("/")] + "/M_Base", bco_path, es_path, mra_path, n_path, udmi, "")
+    material = create_material(path[0:path.rfind("/")] + "/M_Base", bco_path, es_path, mra_path, n_path, udmi, "", False)
     return create_material_instance(material, path, material_type)

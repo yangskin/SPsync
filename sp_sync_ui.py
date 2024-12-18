@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'sp_sync_ui.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.7.3
+## Created by: Qt User Interface Compiler version 6.8.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -220,7 +220,7 @@ class Ui_SPsync(object):
     # setupUi
 
     def retranslateUi(self, SPsync):
-        SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync 0.963", None))
+        SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync 0.964", None))
         self.label.setText(QCoreApplication.translate("SPsync", u"Export Preset:", None))
         self.file_select.setText(QCoreApplication.translate("SPsync", u"Selet Path", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))

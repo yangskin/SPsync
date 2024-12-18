@@ -1,6 +1,6 @@
 import unreal
 
-def create_material(path:str, bco_path:str, es_path:str, mra_path:str, n_path:str, udmi:bool, material_type:str)->unreal.Material:
+def create_material(path:str, bco_path:str, es_path:str, mra_path:str, n_path:str, udmi:bool, material_type:str, emissive_type:bool)->unreal.Material:
     asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
     if asset_library.do_assets_exist([path]):
         return asset_library.load_asset(path)
@@ -38,7 +38,7 @@ def create_material(path:str, bco_path:str, es_path:str, mra_path:str, n_path:st
             unreal.MaterialEditingLibrary.connect_material_expressions(emissive_scattering, "rgb", emissive_mul_node, "a")
             emissive_scalar_node:unreal.MaterialExpressionScalarParameter = unreal.MaterialEditingLibrary.create_material_expression(material, unreal.MaterialExpressionScalarParameter)
             emissive_scalar_node.set_editor_property("parameter_name", "emissive_intensity")
-            emissive_scalar_node.set_editor_property("default_value", 0)
+            emissive_scalar_node.set_editor_property("default_value", 1 if emissive_type else 0)
             unreal.MaterialEditingLibrary.connect_material_expressions(emissive_scalar_node, "", emissive_mul_node, "b")
             unreal.MaterialEditingLibrary.connect_material_property(emissive_mul_node, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
             #unreal.MaterialEditingLibrary.connect_material_property(emissive_scattering, "a", unreal.MaterialProperty.MP)

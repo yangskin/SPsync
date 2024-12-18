@@ -46,9 +46,11 @@ def create_material_and_connect_texture():
             es_name = "T_" + mesh_name + "_" + material_name + "_ES"
             n_name = "T_" + mesh_name + "_" + material_name + "_N"
 
+            emissive_type = True
             texture_path = find_asset(target_path, es_name)
             if texture_path == None:
                 es_name = bco_name
+                emissive_type = False
 
             if udim_type:
                 set_texture_srgb_off(target_path, mra_name)
@@ -58,7 +60,10 @@ def create_material_and_connect_texture():
                                 target_path + '/' + es_name,   
                                 target_path + '/' + mra_name,
                                 target_path + '/' + n_name,
-                                True, material_type)
+                                True, 
+                                material_type, 
+                                emissive_type
+                                )
                 
             else:
                 bco = get_texture_parameter_value("BCO", target_path, bco_name)
