@@ -60,7 +60,8 @@ def import_textures():
             importTask.automated = True
             asset_tools.import_asset_tasks([importTask])
 
-    unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).editor_invalidate_viewports()
+    #unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).editor_invalidate_viewports()
+    unreal.EditorLevelLibrary().editor_invalidate_viewports()
     
     return True
 

@@ -184,23 +184,23 @@ class ue_sync(QtCore.QObject):
         self._main_widget = main_widget
         self._root_path = os.path.dirname(__file__)
 
-        #读取导入ue贴图脚本
-        with open(self._root_path + "\\import_textures_ue.py", "r") as f:
+        # 修改所有文件读取，添加 encoding='utf-8'
+        with open(self._root_path + "\\import_textures_ue.py", "r", encoding='utf-8') as f:
             self._to_ue_code = f.read()
         
-        with open(self._root_path + "\\sync_camera_ue.py", "r") as f:
+        with open(self._root_path + "\\sync_camera_ue.py", "r", encoding='utf-8') as f:
             self._sync_camera_code = f.read()
 
-        with open(self._root_path + "\\material_ue.py", "r") as f:
+        with open(self._root_path + "\\material_ue.py", "r", encoding='utf-8') as f:
             self._material_ue_code = f.read()
 
-        with open(self._root_path + "\\material_instance_ue.py", "r") as f:
+        with open(self._root_path + "\\material_instance_ue.py", "r", encoding='utf-8') as f:
             self._material_instance_ue_code = f.read()
         
-        with open(self._root_path + "\\create_material_and_connect_textures.py", "r") as f:
+        with open(self._root_path + "\\create_material_and_connect_textures.py", "r", encoding='utf-8') as f:
             self._create_material_and_connect_textures_code = f.read()
 
-        with open(self._root_path + "\\import_mesh_ue.py", "r") as f:
+        with open(self._root_path + "\\import_mesh_ue.py", "r", encoding='utf-8') as f:
             self._import_mesh_ue_code = f.read()
         
         self._ue_sync_camera = ue_sync_camera(self._ue_sync_remote)
