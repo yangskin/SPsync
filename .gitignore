@@ -3,3 +3,5 @@
 .venv
 .vscode
 __pycache__
+SPsync.code-workspace
+.pytest_cache/
