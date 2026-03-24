@@ -5,7 +5,6 @@ unreal_editor_subsystem:unreal.UnrealEditorSubsystem = unreal.get_editor_subsyst
 editor_actor_subsystem:unreal.EditorActorSubsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
 
-level_editor_subsystem.editor_set_game_view(True)
 camera_actor:unreal.Actor = None
 
 def find_camera_by_name(camera_name:str):

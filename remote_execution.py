@@ -446,6 +446,9 @@ class _RemoteExecutionCommandConnection(object):
     def _receive_message(self, expected_type):
         '''
         Receive a message over the TCP socket from the remote party.
+        Loops recv() until the accumulated data forms a valid JSON message,
+        since TCP is a stream protocol and a single recv() may not return
+        the complete payload.
 
         Args:
             expected_type (string): The type of message we expect to receive.
@@ -453,11 +456,17 @@ class _RemoteExecutionCommandConnection(object):
         Returns:
             The message that was received.
         '''
-        data = self._command_channel_socket.recv(DEFAULT_RECEIVE_BUFFER_SIZE)
-        if data:
-            message = _RemoteExecutionMessage(None, None)
-            if message.from_json_bytes(data) and message.passes_receive_filter(self._node_id) and message.type_ == expected_type:
-                return message
+        data = b''
+        while True:
+            chunk = self._command_channel_socket.recv(DEFAULT_RECEIVE_BUFFER_SIZE)
+            if not chunk:
+                break
+            data += chunk
+            # Try to parse only when data looks like complete JSON (ends with '}')
+            if data.rstrip().endswith(b'}'):
+                message = _RemoteExecutionMessage(None, None)
+                if message.from_json_bytes(data) and message.passes_receive_filter(self._node_id) and message.type_ == expected_type:
+                    return message
         raise RuntimeError('Remote party failed to send a valid response!')
 
     def _init_command_listen_socket(self):

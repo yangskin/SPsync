@@ -1,6 +1,8 @@
 import unreal
+import json
 
 asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
+
 def find_asset(folder_path, name):
     assets = asset_library.list_assets(folder_path)
     for asset in assets:
@@ -8,14 +10,12 @@ def find_asset(folder_path, name):
             return asset
     return None
 
-def import_textures():
-    paths = [
-    EXPORT_TEXTURE_PATH
-    ]
+def import_textures(params_json):
+    params = json.loads(params_json)
+    paths = params["files"]
+    folder_path = params["folder_path"]
+    udim_type = params["udim"]
 
-    folder_path = "FOLDER_PATH"
-
-    udim_type = UDIM_TYPE
     if udim_type:
         new_paths = [] 
         for path in paths:

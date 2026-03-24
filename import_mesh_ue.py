@@ -1,4 +1,5 @@
 import unreal
+import json
 
 editor_actor_subsystem:unreal.EditorActorSubsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 unreal_editor_subsystem:unreal.UnrealEditorSubsystem = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
@@ -86,6 +87,13 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:
         editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
     '''
 
-def import_mesh_and_swap(path:str, target:str, name:str, udmi:bool, scale:float, force_front_x_axis:bool = True):
+def import_mesh_and_swap(params_json):
+    params = json.loads(params_json)
+    path = params["path"]
+    target = params["target"]
+    name = params["name"]
+    udmi = params["udim"]
+    scale = params["scale"]
+    force_front_x_axis = params.get("force_front_x_axis", True)
     swap_meshes_and_set_material(import_mesh(path, target, name, scale), target, name, udmi, force_front_x_axis)
     return True

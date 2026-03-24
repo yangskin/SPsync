@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import json
 import threading
 import time
 import queue
@@ -165,18 +166,14 @@ class ue_sync(QtCore.QObject):
     _ui: Ui_SPsync
     _main_widget:QtWidgets.QWidget
     _root_path: str = ""
-    _to_ue_code: str = ""
-    _sync_camera_code:str = ""
-    _material_ue_code:str = ""
-    _material_instance_ue_code:str = ""
-    _create_material_and_connect_textures_code:str = ""
-    _import_mesh_ue_code:str = ""
+    _ue_bootstrap_code: str = ""
+    _bootstrap_injected: bool = False
     _ue_sync_camera:ue_sync_camera = None
     _ue_sync_camera_thread:threading.Thread = None
     _ue_sync_remote:ue_sync_remote = ue_sync_remote()
-    _udim_type_str:str = "False"
-    _mesh_scale_str:str = "1"
-    _set_force_front_x_axis_str:str = "True"
+    _udim_type:bool = False
+    _mesh_scale:float = 1.0
+    _force_front_x_axis:bool = True
     sync_error = QtCore.Signal(str)
     
     def __init__(self, ui: Ui_SPsync, main_widget:QtWidgets.QWidget) -> None:
@@ -185,55 +182,61 @@ class ue_sync(QtCore.QObject):
         self._main_widget = main_widget
         self._root_path = os.path.dirname(__file__)
 
-        #读取导入ue贴图脚本
-        with open(self._root_path + "\\import_textures_ue.py", "r") as f:
-            self._to_ue_code = f.read()
-        
-        with open(self._root_path + "\\sync_camera_ue.py", "r") as f:
-            self._sync_camera_code = f.read()
-
-        with open(self._root_path + "\\material_ue.py", "r") as f:
-            self._material_ue_code = f.read()
-
-        with open(self._root_path + "\\material_instance_ue.py", "r") as f:
-            self._material_instance_ue_code = f.read()
-        
-        with open(self._root_path + "\\create_material_and_connect_textures.py", "r") as f:
-            self._create_material_and_connect_textures_code = f.read()
-
-        with open(self._root_path + "\\import_mesh_ue.py", "r") as f:
-            self._import_mesh_ue_code = f.read()
+        self._ue_bootstrap_code = self._load_ue_scripts()
         
         self._ue_sync_camera = ue_sync_camera(self._ue_sync_remote)
         
         self.sync_error.connect(self.ue_sync_textures_error)
         pass
 
+    def _load_ue_scripts(self) -> str:
+        """将所有 UE 侧脚本合并为一个 bootstrap 脚本。"""
+        scripts = [
+            "import_textures_ue.py",
+            "material_ue.py",
+            "material_instance_ue.py",
+            "create_material_and_connect_textures.py",
+            "import_mesh_ue.py",
+            "sync_camera_ue.py",
+        ]
+        combined = ""
+        for script in scripts:
+            with open(os.path.join(self._root_path, script), "r", encoding="utf-8") as f:
+                combined += f"\n# === {script} ===\n"
+                combined += f.read()
+                combined += "\n"
+        return combined
+
+    def _ensure_bootstrap(self):
+        """确保 UE 侧函数已注入。连接后一次性发送所有脚本定义。"""
+        if not self._bootstrap_injected:
+            self._ue_sync_remote.add_command(
+                ue_sync_command(
+                    code=self._ue_bootstrap_code,
+                    error_fun=lambda: self.sync_error.emit("sync_error"),
+                    call_back_fun=self._on_bootstrap_done,
+                    model=remote_execution.MODE_EXEC_FILE
+                ))
+
+    def _on_bootstrap_done(self, result):
+        self._bootstrap_injected = True
+
     def set_udim_type(self, udim_type:bool):
-        if udim_type:
-            self._udim_type_str = "True"
-        else:
-            self._udim_type_str = "False"
+        self._udim_type = udim_type
 
     def set_material_masked(self, material_masked:bool):
-        if material_masked:
-            self._material_masked_str = "True"
-        else:
-            self._material_masked_str = "False"
+        pass
 
     def set_material_translucent(self, material_translucent:bool):
-        if material_translucent:
-            self._material_translucent_str = "True"
-        else:
-            self._material_translucent_str = "False"
+        pass
 
     def set_mesh_scale(self, scale:float):
         self._ue_sync_camera.model_scale = scale
-        self._mesh_scale_str = str(scale)
+        self._mesh_scale = scale
 
     def set_force_front_x_axis(self, force_front_x_axis:bool):
         self._ue_sync_camera.force_front_x_axis = force_front_x_axis
-        self._set_force_front_x_axis_str = str(force_front_x_axis)
+        self._force_front_x_axis = force_front_x_axis
 
     def _show_help_window(self):
         image_dialog = ImageDialog(self._root_path + "\\doc\\ue_setting.png", "Port link failed, check the relevant settings in UE!", self._main_widget)
@@ -243,63 +246,55 @@ class ue_sync(QtCore.QObject):
         """
         同步列表中的贴图到UE中
         """
-
-        current_to_ue_code: str = self._to_ue_code
-        current_to_ue_code = current_to_ue_code.replace('FOLDER_PATH', target_path)
-        exportFileListStr = ""
-
-        for file in export_file_list:
-            exportFileListStr += "  '"+ file + "',\n"
-        current_to_ue_code = current_to_ue_code.replace('EXPORT_TEXTURE_PATH', exportFileListStr)
-
-        current_to_ue_code = current_to_ue_code.replace('UDIM_TYPE', self._udim_type_str)
-
-        self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
-
-        self._ue_sync_remote.add_command(ue_sync_command("import_textures()", 
+        self._ensure_bootstrap()
+        params_json = json.dumps({
+            "folder_path": target_path,
+            "files": export_file_list,
+            "udim": self._udim_type
+        })
+        call = f"import_textures({params_json!r})"
+        self._ue_sync_remote.add_command(ue_sync_command(call, 
                                                          lambda: self.sync_error.emit("sync_error"), 
                                                          callback, 
                                                          remote_execution.MODE_EVAL_STATEMENT))
           
     def sync_ue_create_material_and_connect_textures(self, target_path, mesh_name, material_names:List[str], material_types, callback:callable):
-        self._ue_sync_remote.add_command(ue_sync_command(self._material_ue_code, lambda: self.sync_error.emit("sync_error")))
-        self._ue_sync_remote.add_command(ue_sync_command(self._material_instance_ue_code, lambda: self.sync_error.emit("sync_error")))
-
-        current_to_ue_code:str = self._create_material_and_connect_textures_code
-        current_to_ue_code = current_to_ue_code.replace('TARGET_PATH', target_path)
-
-        material_names_str = ""
+        self._ensure_bootstrap()
+        material_type_list = []
         for material_name in material_names:
             for material_type in material_types:
                 if material_name == material_type[0]:
-                    material_names_str += "  '"+ material_name + ":" + material_type[1] + "',\n"
+                    material_type_list.append({"name": material_name, "type": material_type[1]})
 
-        current_to_ue_code = current_to_ue_code.replace('MATERIAL_NAME_TYPES', material_names_str)
-        current_to_ue_code = current_to_ue_code.replace('MESH_NAME', mesh_name)
-        current_to_ue_code = current_to_ue_code.replace('UDIM_TYPE', self._udim_type_str)
- 
-        self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, lambda: self.sync_error.emit("sync_error")))
-
-        self._ue_sync_remote.add_command(ue_sync_command("create_material_and_connect_texture()", 
+        params_json = json.dumps({
+            "target_path": target_path,
+            "mesh_name": mesh_name,
+            "material_types": material_type_list,
+            "udim": self._udim_type
+        })
+        call = f"create_material_and_connect_textures({params_json!r})"
+        self._ue_sync_remote.add_command(ue_sync_command(call, 
                                                          lambda: self.sync_error.emit("sync_error"), 
                                                          callback, 
                                                          remote_execution.MODE_EVAL_STATEMENT))
 
     def ue_sync_textures_error(self):
+        self._bootstrap_injected = False
         self._show_help_window() 
         self._ui.auto_sync.setChecked(False)
 
     def ue_import_mesh(self, target_path:str, mesh_path:str, callback:callable):
-        current_to_ue_code = "import_mesh_and_swap('PATH', 'TARGET', 'NAME', UDMI_TYPE, SCALE, FORCE_FRONT_X_AXIS)"
-        current_to_ue_code = current_to_ue_code.replace('PATH', mesh_path)
-        current_to_ue_code = current_to_ue_code.replace('TARGET', target_path)
-        current_to_ue_code = current_to_ue_code.replace('NAME', extract_mesh_name(mesh_path))
-        current_to_ue_code = current_to_ue_code.replace('UDMI_TYPE', self._udim_type_str)
-        current_to_ue_code = current_to_ue_code.replace('SCALE', self._mesh_scale_str)
-        current_to_ue_code = current_to_ue_code.replace('FORCE_FRONT_X_AXIS', self._set_force_front_x_axis_str)
-        
-        self._ue_sync_remote.add_command(ue_sync_command(self._import_mesh_ue_code, lambda: self.sync_error.emit("sync_error")))
-        self._ue_sync_remote.add_command(ue_sync_command(current_to_ue_code, 
+        self._ensure_bootstrap()
+        params_json = json.dumps({
+            "path": mesh_path,
+            "target": target_path,
+            "name": extract_mesh_name(mesh_path),
+            "udim": self._udim_type,
+            "scale": self._mesh_scale,
+            "force_front_x_axis": self._force_front_x_axis
+        })
+        call = f"import_mesh_and_swap({params_json!r})"
+        self._ue_sync_remote.add_command(ue_sync_command(call, 
                                                          lambda: self.sync_error.emit("sync_error"), 
                                                          callback, 
                                                          remote_execution.MODE_EVAL_STATEMENT))
@@ -313,6 +308,7 @@ class ue_sync(QtCore.QObject):
         self._ui.sync_view.setChecked(False)
 
     def ue_sync_camera_error(self, message:str):
+        self._bootstrap_injected = False
         self.close_ue_sync_camera()
         self._show_help_window()
 
@@ -324,7 +320,7 @@ class ue_sync(QtCore.QObject):
         self._ue_sync_camera.sync_error.connect(self.ue_sync_camera_error)
         self._ue_sync_camera.thread_loop_type.clear()
 
-        self._ue_sync_remote.add_command(ue_sync_command(self._sync_camera_code, lambda: self.sync_error.emit("sync_error")))
+        self._ensure_bootstrap()
         self._ue_sync_remote.add_command(ue_sync_command("init_sync_camera()", lambda: self.sync_error.emit("sync_error")))
         
         self._ue_sync_camera_thread = threading.Thread(target=self._ue_sync_camera.update, daemon=True)

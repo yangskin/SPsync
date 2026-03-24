@@ -1,7 +1,7 @@
 # SPsync 开发计划
 
-> 最后更新: 2026-03-24  
-> 当前版本: 0.964 (阶段一已完成)  
+> 最后更新: 2026-03-25  
+> 当前版本: 0.964 (阶段二已完成)  
 > 目标版本: 1.0
 
 ---
@@ -91,21 +91,21 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 
 ### 阶段二：UE 侧脚本参数化改造
 
-- **状态**: 🔲 未开始
+- **状态**: ✅ 已完成 (2026-03-25)
 - **风险**: ⭐⭐⭐ 中
 - **前置**: 阶段一完成并通过人工测试
 - **目标**: 消除字符串模板拼接，改为 JSON 参数化调用
 
 | 任务 | 状态 | 说明 |
 |------|------|------|
-| `sp_sync_ue.py` 新增 bootstrap 机制 | 🔲 | `_load_ue_scripts()` 合并脚本，`_ensure_bootstrap()` 一次注入 |
-| 改造 `import_textures_ue.py` | 🔲 | 去掉占位符 → `def import_textures(params_json)` |
-| 改造 `create_material_and_connect_textures.py` | 🔲 | 去掉占位符 → 参数化函数 |
-| 改造 `import_mesh_ue.py` | 🔲 | `import_mesh_and_swap` 改为接收 JSON |
-| `sp_sync_ue.py` 调用改为 JSON 序列化 | 🔲 | 6 个调用方法全部改造 |
-| `material_ue.py` 纳入统一 bootstrap | 🔲 | 代码不变，只改加载方式 |
-| `material_instance_ue.py` 纳入统一 bootstrap | 🔲 | 解决隐式作用域依赖 |
-| `sync_camera_ue.py` 纳入统一 bootstrap | 🔲 | 保持高频直传方式 |
+| `sp_sync_ue.py` 新增 bootstrap 机制 | ✅ | `_load_ue_scripts()` 合并 6 个脚本，`_ensure_bootstrap()` 一次注入，错误时自动重置 |
+| 改造 `import_textures_ue.py` | ✅ | 去掉占位符 → `def import_textures(params_json)` 接收 JSON |
+| 改造 `create_material_and_connect_textures.py` | ✅ | 去掉占位符 → `def create_material_and_connect_textures(params_json)` 接收 JSON |
+| 改造 `import_mesh_ue.py` | ✅ | `import_mesh_and_swap(params_json)` 改为接收 JSON |
+| `sp_sync_ue.py` 调用改为 JSON 序列化 | ✅ | `sync_ue_textures`, `sync_ue_create_material_and_connect_textures`, `ue_import_mesh` 全部改为 `json.dumps()` + `repr()` |
+| `material_ue.py` 纳入统一 bootstrap | ✅ | 代码不变，通过 `_load_ue_scripts()` 合并加载 |
+| `material_instance_ue.py` 纳入统一 bootstrap | ✅ | 代码不变，隐式依赖通过 bootstrap 加载顺序解决 |
+| `sync_camera_ue.py` 纳入统一 bootstrap | ✅ | 移除模块级 `editor_set_game_view(True)` 副作用，保持高频直传 |
 | 人工测试: 完整测试矩阵 | 🔲 | 见下方测试矩阵 |
 
 ### 阶段三：sp_sync.py 职责拆分
@@ -196,3 +196,4 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 |------|------|------|
 | 2026-03-24 | 0.964 | 项目初始状态记录；制定重构计划（方案 A） |
 | 2026-03-24 | 0.964+ | 阶段一完成：创建 `utils.py`（11 个纯函数）+ `tests/test_utils.py`（37 个测试用例）；`sp_sync.py` 和 `sp_sync_ue.py` 已委托调用 |
+| 2026-03-25 | 0.964++ | 阶段二完成：UE 侧脚本参数化改造。`import_textures_ue.py`/`create_material_and_connect_textures.py`/`import_mesh_ue.py` 去掉占位符改为 JSON 入参；`sp_sync_ue.py` 新增 bootstrap 一次注入机制 + JSON 序列化调用；`sync_camera_ue.py` 移除模块级副作用 |

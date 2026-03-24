@@ -1,4 +1,5 @@
 import unreal
+import json
 
 asset_library:unreal.EditorAssetLibrary = unreal.EditorAssetLibrary()
 
@@ -24,19 +25,16 @@ def get_texture_parameter_value(parameter_name, folder_path, name, srgb_type = T
         return unreal.TextureParameterValue(parameter_info=unreal.MaterialParameterInfo(parameter_name, unreal.MaterialParameterAssociation.GLOBAL_PARAMETER, -1), parameter_value=texture)
     return None
 
-def create_material_and_connect_texture():
-    material_names_types = [
-    MATERIAL_NAME_TYPES
-    ]
+def create_material_and_connect_textures(params_json):
+    params = json.loads(params_json)
+    target_path = params["target_path"]
+    mesh_name = params["mesh_name"]
+    material_names_types = params["material_types"]
+    udim_type = params["udim"]
 
-    target_path = "TARGET_PATH"
-    mesh_name = "MESH_NAME"
-    udim_type = UDIM_TYPE
-
-    for material_name_type in material_names_types:
-        material_name_type_split = material_name_type.split(":")
-        material_name = material_name_type_split[0]
-        material_type = material_name_type_split[1]
+    for item in material_names_types:
+        material_name = item["name"]
+        material_type = item["type"]
 
         material_path = target_path + "/" + ("M_" if udim_type else "MI_") + mesh_name + "_" + material_name
 
