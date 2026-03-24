@@ -1,7 +1,7 @@
 # SPsync 开发计划
 
 > 最后更新: 2026-03-25  
-> 当前版本: 0.964 (阶段二已完成)  
+> 当前版本: 0.964 (阶段三已完成)  
 > 目标版本: 1.0
 
 ---
@@ -19,7 +19,9 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 | 文件 | 行数 | 运行环境 | 状态 |
 |------|------|---------|------|
 | `__init__.py` | 31 | SP | ✅ 稳定 |
-| `sp_sync.py` | 475 | SP | ⚠️ 待重构（上帝类） |
+| `sp_sync.py` | ~130 | SP | ✅ 已重构为控制器 |
+| `sp_sync_config.py` | ~60 | SP | ✅ 新增（配置持久化） |
+| `sp_sync_export.py` | ~230 | SP | ✅ 新增（导出编排） |
 | `sp_sync_ui.py` | 248 | SP | ✅ 稳定（自动生成） |
 | `sp_sync_ue.py` | 331 | SP | ⚠️ 待重构（字符串模板注入） |
 | `remote_execution.py` | 630 | SP | ✅ 稳定（Epic 官方，不改动） |
@@ -37,7 +39,7 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 |------|------|--------|---------|
 | TD-01 | 字符串模板注入：UE 脚本通过 `.replace()` 拼接参数 | 🔴 高 | `sp_sync_ue.py`, 3 个 UE 脚本 |
 | TD-02 | 隐式作用域依赖：`material_instance_ue.py` 依赖先注入 `material_ue.py` | 🔴 高 | `sp_sync_ue.py` |
-| TD-03 | 上帝类：`sp_sync.py` 475 行混合 UI/事件/导出/配置 | 🟡 中 | `sp_sync.py` |
+| TD-03 | ~~上帝类~~：已拆分为 controller / config / export | ✅ 已解决 | `sp_sync.py`, `sp_sync_config.py`, `sp_sync_export.py` |
 | TD-04 | 占位符命名冲突风险：`PATH` 可匹配 `FOLDER_PATH` 子串 | 🟡 中 | `sp_sync_ue.py` |
 | TD-05 | 无单元测试，纯逻辑与副作用代码未分离 | 🟡 中 | 全局 |
 
@@ -110,16 +112,16 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 
 ### 阶段三：sp_sync.py 职责拆分
 
-- **状态**: 🔲 未开始
+- **状态**: ✅ 已完成 (2026-03-25)
 - **风险**: ⭐⭐ 低中
 - **前置**: 阶段二完成并通过人工测试
 - **目标**: 消除上帝类，职责清晰分层
 
 | 任务 | 状态 | 说明 |
 |------|------|------|
-| 创建 `sp_sync_config.py` | 🔲 | 提取 `_save_data` / `_load_data` / 路径校验 |
-| 创建 `sp_sync_export.py` | 🔲 | 提取导出编排 / 预设管理 |
-| 精简 `sp_sync.py` | 🔲 | 仅保留事件注册 + UI 绑定 (~150 行) |
+| 创建 `sp_sync_config.py` | ✅ | `SPSyncConfig` 类：`save()` / `load()` / `origin_export_path` 属性 |
+| 创建 `sp_sync_export.py` | ✅ | `SPSyncExport` 类：导出编排、预设管理、纹理集追踪 |
+| 精简 `sp_sync.py` | ✅ | ~130 行控制器：事件注册 + UI 绑定 + 委托到 config/export |
 | 人工回归测试 | 🔲 | 配置 + 完整导出流程 |
 
 ---
