@@ -37,11 +37,16 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 
 | 编号 | 问题 | 严重度 | 涉及文件 |
 |------|------|--------|---------|
-| TD-01 | 字符串模板注入：UE 脚本通过 `.replace()` 拼接参数 | 🔴 高 | `sp_sync_ue.py`, 3 个 UE 脚本 |
-| TD-02 | 隐式作用域依赖：`material_instance_ue.py` 依赖先注入 `material_ue.py` | 🔴 高 | `sp_sync_ue.py` |
-| TD-03 | ~~上帝类~~：已拆分为 controller / config / export | ✅ 已解决 | `sp_sync.py`, `sp_sync_config.py`, `sp_sync_export.py` |
-| TD-04 | 占位符命名冲突风险：`PATH` 可匹配 `FOLDER_PATH` 子串 | 🟡 中 | `sp_sync_ue.py` |
-| TD-05 | 无单元测试，纯逻辑与副作用代码未分离 | 🟡 中 | 全局 |
+| TD-01 | ~~字符串模板注入~~ | ✅ 已解决 | `sp_sync_ue.py`, 3 个 UE 脚本 |
+| TD-02 | ~~隐式作用域依赖~~ | ✅ 已解决 | `sp_sync_ue.py` (bootstrap 加载顺序已文档化) |
+| TD-03 | ~~上帝类~~ | ✅ 已解决 | `sp_sync.py`, `sp_sync_config.py`, `sp_sync_export.py` |
+| TD-04 | ~~占位符命名冲突风险~~ | ✅ 已解决 | JSON 参数化后不再存在 |
+| TD-05 | ~~无单元测试~~ | ✅ 已解决 | `utils.py` + 37 个测试用例 |
+| TD-06 | ~~类属性共享可变状态~~ | ✅ 已解决 | `sp_sync_ue.py`, `sp_sync_export.py` |
+| TD-07 | ~~Signal 重复绑定~~ | ✅ 已解决 | `sp_sync_ue.py` |
+| TD-08 | ~~Worker 异常后双重 stop~~ | ✅ 已解决 | `sp_sync_ue.py` |
+| TD-09 | ~~Emissive intensity 逗号 Bug~~ | ✅ 已解决 | `create_material_and_connect_textures.py` |
+| TD-10 | ~~死代码 (ray-casting)~~ | ✅ 已解决 | `import_mesh_ue.py` |
 
 ### 功能完整性
 
@@ -199,3 +204,5 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 | 2026-03-24 | 0.964 | 项目初始状态记录；制定重构计划（方案 A） |
 | 2026-03-24 | 0.964+ | 阶段一完成：创建 `utils.py`（11 个纯函数）+ `tests/test_utils.py`（37 个测试用例）；`sp_sync.py` 和 `sp_sync_ue.py` 已委托调用 |
 | 2026-03-25 | 0.964++ | 阶段二完成：UE 侧脚本参数化改造。`import_textures_ue.py`/`create_material_and_connect_textures.py`/`import_mesh_ue.py` 去掉占位符改为 JSON 入参；`sp_sync_ue.py` 新增 bootstrap 一次注入机制 + JSON 序列化调用；`sync_camera_ue.py` 移除模块级副作用 |
+| 2026-03-25 | 0.964+++ | 阶段三完成：sp_sync.py 上帝类拆分为 controller / config / export 三个文件 |
+| 2026-03-25 | 0.965 | 稳定性优化：修复 emissive intensity 逗号 Bug、类属性可变状态共享、Signal 重复绑定、Worker 异常流、清理死代码、解耦导出事件、UE 脚本依赖文档化、提取导出配置工厂方法 |

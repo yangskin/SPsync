@@ -37,7 +37,7 @@ class sp_sync:
         # 绑定 SP 事件
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ExportTexturesEnded,
-            self._export.export_end_event)
+            self._on_export_end)
 
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectOpened,
@@ -56,6 +56,9 @@ class sp_sync:
             self._export.on_layerstack_changed)
 
     # ── 项目生命周期 ──────────────────────────────────
+
+    def _on_export_end(self, export_data):
+        self._export.export_end_event(export_data)
 
     def _project_open_event(self, state):
         self._export.on_project_open()

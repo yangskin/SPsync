@@ -62,31 +62,6 @@ def swap_meshes_and_set_material(path:str, materials_folder:str, name:str, udmi:
     static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, spawn_location, unreal.Rotator(0, 0, camera_rotation.yaw).combine(unreal.Rotator(0, 0, -270 if force_front_x_axis else -180)))
     editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
 
-    '''
-    ray_start = spawn_location
-    ray_end = ray_start + unreal.Vector(0, 0, -10000)
-    
-    hit_result:unreal.HitResult = unreal.SystemLibrary.line_trace_single(
-        world,
-        ray_start,
-        ray_end,
-        unreal.TraceTypeQuery.TRACE_TYPE_QUERY1,
-        False,
-        [],
-        unreal.DrawDebugTrace.NONE,
-        True
-    )
-    
-    if hit_result:
-        ground_location = hit_result.to_tuple()[4]
-        
-        static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, ground_location, unreal.Rotator(0, 0, camera_rotation.yaw).combine(unreal.Rotator(0, 0, -180)))
-        editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
-    else:
-        static_mesh_actor = editor_actor_subsystem.spawn_actor_from_object(static_mesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
-        editor_actor_subsystem.set_selected_level_actors([static_mesh_actor])
-    '''
-
 def import_mesh_and_swap(params_json):
     params = json.loads(params_json)
     path = params["path"]

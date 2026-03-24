@@ -70,16 +70,13 @@ class ue_sync_command():
     
 class ue_sync_remote(QtCore.QObject):
 
-    _command_queue:queue.Queue
-    _thread:threading.Thread
-    _lock:threading.Lock
-    _remote_exec:remote_execution.RemoteExecution = remote_execution.RemoteExecution()
     _timeout: float = 0.06
 
     def __init__(self):
         self._command_queue = queue.Queue()
         self._thread = None
         self._lock = threading.Lock()
+        self._remote_exec = remote_execution.RemoteExecution()
 
     def _worker(self):
 
@@ -102,7 +99,8 @@ class ue_sync_remote(QtCore.QObject):
                     print(e)
                     command.error_fun()
                     self._remote_exec.stop()
-                    pass
+                    self._command_queue.task_done()
+                    continue
                 
                 if time.time() - start_time > self._timeout:
                     self._remote_exec.stop()
@@ -132,15 +130,14 @@ class ue_sync_remote(QtCore.QObject):
 
 
 class ue_sync_camera(QtCore.QObject):
-    _ue_sync_remote:ue_sync_remote
     sync_error = QtCore.Signal(str)
-    thread_loop_type:threading.Event = threading.Event()
-    model_scale:float = 1
-    force_front_x_axis:bool = True
-    
+
     def __init__(self, ue_sync_remote_instance:ue_sync_remote):
         super().__init__()
         self._ue_sync_remote = ue_sync_remote_instance
+        self.thread_loop_type = threading.Event()
+        self.model_scale = 1.0
+        self.force_front_x_axis = True
 
     def update(self):
         while not self.thread_loop_type.is_set():
@@ -163,17 +160,6 @@ class ue_sync_camera(QtCore.QObject):
 
 class ue_sync(QtCore.QObject):
 
-    _ui: Ui_SPsync
-    _main_widget:QtWidgets.QWidget
-    _root_path: str = ""
-    _ue_bootstrap_code: str = ""
-    _bootstrap_injected: bool = False
-    _ue_sync_camera:ue_sync_camera = None
-    _ue_sync_camera_thread:threading.Thread = None
-    _ue_sync_remote:ue_sync_remote = ue_sync_remote()
-    _udim_type:bool = False
-    _mesh_scale:float = 1.0
-    _force_front_x_axis:bool = True
     sync_error = QtCore.Signal(str)
     
     def __init__(self, ui: Ui_SPsync, main_widget:QtWidgets.QWidget) -> None:
@@ -181,16 +167,31 @@ class ue_sync(QtCore.QObject):
         self._ui = ui
         self._main_widget = main_widget
         self._root_path = os.path.dirname(__file__)
+        self._bootstrap_injected = False
+        self._udim_type = False
+        self._mesh_scale = 1.0
+        self._force_front_x_axis = True
+        self._ue_sync_camera_thread = None
+        self._ue_sync_remote = ue_sync_remote()
 
         self._ue_bootstrap_code = self._load_ue_scripts()
         
         self._ue_sync_camera = ue_sync_camera(self._ue_sync_remote)
+        self._ue_sync_camera.sync_error.connect(self.ue_sync_camera_error)
         
         self.sync_error.connect(self.ue_sync_textures_error)
-        pass
 
     def _load_ue_scripts(self) -> str:
-        """将所有 UE 侧脚本合并为一个 bootstrap 脚本。"""
+        """将所有 UE 侧脚本合并为一个 bootstrap 脚本。
+        
+        加载顺序有依赖关系：
+        1. import_textures_ue.py  — 定义 find_asset()，被后续脚本使用
+        2. material_ue.py         — 定义 create_material()，被 material_instance_ue 和 create_material 使用
+        3. material_instance_ue.py — 定义 get_material_instance()，依赖 create_material()
+        4. create_material_and_connect_textures.py — 依赖 find_asset(), create_material(), get_material_instance()
+        5. import_mesh_ue.py      — 依赖 find_asset()
+        6. sync_camera_ue.py      — 独立，无跨文件依赖
+        """
         scripts = [
             "import_textures_ue.py",
             "material_ue.py",
@@ -317,7 +318,6 @@ class ue_sync(QtCore.QObject):
             self._ue_sync_camera.thread_loop_type.set()
             self._ue_sync_camera_thread.join()
 
-        self._ue_sync_camera.sync_error.connect(self.ue_sync_camera_error)
         self._ue_sync_camera.thread_loop_type.clear()
 
         self._ensure_bootstrap()
@@ -325,5 +325,4 @@ class ue_sync(QtCore.QObject):
         
         self._ue_sync_camera_thread = threading.Thread(target=self._ue_sync_camera.update, daemon=True)
         self._ue_sync_camera_thread.start()
-        pass
            

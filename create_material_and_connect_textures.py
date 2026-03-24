@@ -85,7 +85,7 @@ def create_material_and_connect_textures(params_json):
                     texture_parameter_values.append(n)
                 if es != None:
                     texture_parameter_values.append(es)
-                    unreal.MaterialEditingLibrary.set_material_instance_scalar_parameter_value,(material_instance, "emissive_intensity" , 1)
+                    unreal.MaterialEditingLibrary.set_material_instance_scalar_parameter_value(material_instance, "emissive_intensity", 1)
                 
                 if len(texture_parameter_values) > 0:
                     material_instance.set_editor_property("texture_parameter_values", texture_parameter_values)

@@ -25,15 +25,6 @@ from . utils import extract_mesh_name, determine_material_type
 class SPSyncExport:
     """管理导出流程、预设和纹理集追踪。"""
 
-    _root_path: str = ""
-    _temp_path: str = ""
-    _current_preset: substance_painter.export.ResourceExportPreset = None
-    _export_sync_button_type: bool = False
-    _current_mesh_name: str = ""
-    _current_udim_type: bool = False
-    _current_set_names: List[str] = []
-    _load_type: bool = False
-
     def __init__(self, ui: Ui_SPsync, main_widget: QtWidgets.QWidget,
                  sp_sync_ue: ue_sync, config: SPSyncConfig):
         self._ui = ui
@@ -41,6 +32,12 @@ class SPSyncExport:
         self._sp_sync_ue = sp_sync_ue
         self._config = config
         self._root_path = os.path.dirname(__file__)
+        self._current_preset = None
+        self._export_sync_button_type = False
+        self._current_mesh_name = ""
+        self._current_udim_type = False
+        self._current_set_names = []
+        self._load_type = False
 
         self._temp_path = tempfile.gettempdir().replace('\\', '/') + "/sp_sync_temp"
         self.clean_temp_folder()
@@ -232,12 +229,16 @@ class SPSyncExport:
 
         self.on_layerstack_changed(None)
 
+        export_config = self._build_export_config(export_list)
+        substance_painter.export.export_project_textures(export_config)
+
+    def _build_export_config(self, export_list: list) -> dict:
         newPreset = {
             "name": self._current_preset.resource_id.name,
             "maps": self._current_preset.list_output_maps()
         }
 
-        export_config = {
+        return {
             "exportShaderParams": False,
             "exportPath": self._temp_path,
             "defaultExportPreset": newPreset["name"],
@@ -251,8 +252,6 @@ class SPSyncExport:
                     }
                 }]
         }
-
-        substance_painter.export.export_project_textures(export_config)
 
     def sync_mesh(self):
         if not substance_painter.project.is_open():
