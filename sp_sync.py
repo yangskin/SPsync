@@ -29,6 +29,7 @@ else :
     from PySide6.QtGui import QPixmap
 
 from . sp_sync_ue import ue_sync
+from . utils import extract_mesh_name, determine_material_type, validate_content_path, content_path_to_game_path
 
 # 载入UI描述
 from . sp_sync_ui import Ui_SPsync
@@ -136,13 +137,11 @@ class sp_sync:
         texture_set_list:List[substance_painter.textureset.TextureSet] = substance_painter.textureset.all_texture_sets()
         request = []
         for texture_set in texture_set_list:
-            current_material_type:str = "opaque"
+            channel_names = []
             for stack in texture_set.all_stacks():
                 for channel in stack.all_channels().keys():
-                    if channel == substance_painter.textureset.ChannelType.Opacity:
-                        current_material_type = "masked"
-                    if channel == substance_painter.textureset.ChannelType.Translucency:
-                        current_material_type = "translucency"
+                    channel_names.append(channel.name)
+            current_material_type = determine_material_type(channel_names)
             request.append([texture_set.name(), current_material_type])
         
         return request
@@ -163,7 +162,7 @@ class sp_sync:
         self._reset_all_freeze_ui(True)
 
         mesh_path = substance_painter.project.last_imported_mesh_path()
-        self._current_mesh_name = mesh_path[mesh_path.rfind("/") + 1 : mesh_path.rfind(".")]
+        self._current_mesh_name = extract_mesh_name(mesh_path)
 
         substance_painter.event.DISPATCHER.connect(
             substance_painter.event.ProjectEditionEntered,
@@ -239,9 +238,9 @@ class sp_sync:
         
         #打开文件选择对话框
         file_path: str = QtWidgets.QFileDialog.getExistingDirectory(self._main_widget, "打开", self._origin_export_path, QtWidgets.QFileDialog.Option.ShowDirsOnly)
-        if "Content" in file_path:
+        if validate_content_path(file_path):
             self._origin_export_path = file_path
-            self._ui.file_path.setText( "/" + file_path[file_path.find("Content"):].replace("Content", "Game") )
+            self._ui.file_path.setText(content_path_to_game_path(file_path))
             self._save_data()
         else:
             QtWidgets.QMessageBox.information(self._main_widget, "Warning", "You need to specify the output path under the 'content/' directory in the engine!")

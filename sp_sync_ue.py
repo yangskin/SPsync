@@ -6,6 +6,7 @@ import queue
 from typing import List
 
 from . import remote_execution
+from . utils import extract_mesh_name
 
 import substance_painter.export
 import substance_painter.textureset
@@ -292,7 +293,7 @@ class ue_sync(QtCore.QObject):
         current_to_ue_code = "import_mesh_and_swap('PATH', 'TARGET', 'NAME', UDMI_TYPE, SCALE, FORCE_FRONT_X_AXIS)"
         current_to_ue_code = current_to_ue_code.replace('PATH', mesh_path)
         current_to_ue_code = current_to_ue_code.replace('TARGET', target_path)
-        current_to_ue_code = current_to_ue_code.replace('NAME', mesh_path[mesh_path.rfind("/") + 1 :mesh_path.rfind(".")])
+        current_to_ue_code = current_to_ue_code.replace('NAME', extract_mesh_name(mesh_path))
         current_to_ue_code = current_to_ue_code.replace('UDMI_TYPE', self._udim_type_str)
         current_to_ue_code = current_to_ue_code.replace('SCALE', self._mesh_scale_str)
         current_to_ue_code = current_to_ue_code.replace('FORCE_FRONT_X_AXIS', self._set_force_front_x_axis_str)
