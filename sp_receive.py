@@ -187,14 +187,19 @@ def build_roundtrip_metadata(data: dict) -> dict:
                 "texture_path": tex.get("texture_path", ""),
                 "texture_name": tex.get("texture_name", ""),
             })
-        materials.append({
+        mat_entry: dict = {
             "material_name": mat.get("material_name", ""),
             "material_slot_name": mat.get("material_slot_name", ""),
             "texture_set_name": mat.get("_matched_ts_name", ""),
             "config_profile": mat.get("config_profile", data.get("config_profile", "")),
             "parameter_bindings": mat.get("parameter_bindings", {}) or data.get("parameter_bindings", {}),
             "textures": textures,
-        })
+        }
+        # 保留 texture_definitions（新格式通道打包信息）
+        td = mat.get("texture_definitions") or data.get("texture_definitions")
+        if td:
+            mat_entry["texture_definitions"] = td
+        materials.append(mat_entry)
     return {
         "static_mesh": data.get("static_mesh", ""),
         "static_mesh_path": data.get("static_mesh_path", ""),
@@ -333,11 +338,12 @@ def extract_channels_from_materials(materials: list[dict], parameter_bindings: d
     for mat in materials:
         # per-material bindings 优先，fallback 到全局
         effective_bindings = mat.get("parameter_bindings") or parameter_bindings
+        tex_defs = mat.get("texture_definitions")
         for tex in mat.get("textures", []):
             prop = tex.get("texture_property_name", "")
             # 检查是否有 packed 通道拆分
             if effective_bindings:
-                packed = resolve_packed_channels(prop, effective_bindings)
+                packed = resolve_packed_channels(prop, effective_bindings, tex_defs)
                 if packed:
                     for sp_ch, _ in packed:
                         if sp_ch not in seen:
@@ -498,6 +504,9 @@ def _on_project_ready(state) -> None:
             def resolve_channel(prop_name: str) -> str:
                 return map_ue_to_sp(prop_name)
 
+        # per-material texture_definitions
+        mat_tex_defs = mat.get("texture_definitions") or data.get("texture_definitions")
+
         # ── 预解析 packed 通道拆分 ──
         # packed_tex_map: {texture_param_name: [(sp_channel, weights), ...]}
         packed_tex_map: dict[str, list[tuple[str, dict[str, float]]]] = {}
@@ -506,7 +515,7 @@ def _on_project_ready(state) -> None:
             for tex_info in mat.get("textures", []):
                 prop_name = tex_info.get("texture_property_name", "")
                 if prop_name and prop_name not in packed_tex_map:
-                    channels_list = resolve_packed_channels(prop_name, mat_bindings)
+                    channels_list = resolve_packed_channels(prop_name, mat_bindings, mat_tex_defs)
                     if channels_list:
                         packed_tex_map[prop_name] = channels_list
             if packed_tex_map:
@@ -603,14 +612,22 @@ def _on_project_ready(state) -> None:
 
 # 单通道格式：探测确认 L8 对所有灰度通道有效
 _DEFAULT_CHANNEL_FORMAT_NAME = "L8"
+# 颜色通道应使用 sRGB8 格式
+_COLOR_CHANNEL_FORMAT_NAME = "sRGB8"
+# 需要 sRGB 颜色格式的通道集合
+_COLOR_CHANNELS = {"BaseColor", "Emissive"}
 
 
 def _ensure_channel_exists(stack, textureset, channel_type, channel_name: str) -> None:
-    """确保 TextureSet Stack 中存在指定通道，不存在则添加（L8 格式）。"""
+    """确保 TextureSet Stack 中存在指定通道，不存在则添加。
+
+    颜色通道（BaseColor, Emissive）使用 sRGB8，灰度通道使用 L8。
+    """
     try:
-        fmt = getattr(textureset.ChannelFormat, _DEFAULT_CHANNEL_FORMAT_NAME)
+        fmt_name = _COLOR_CHANNEL_FORMAT_NAME if channel_name in _COLOR_CHANNELS else _DEFAULT_CHANNEL_FORMAT_NAME
+        fmt = getattr(textureset.ChannelFormat, fmt_name)
         stack.add_channel(channel_type, fmt)
-        print(f'[SPsync]     通道添加: {channel_name} ({_DEFAULT_CHANNEL_FORMAT_NAME})')
+        print(f'[SPsync]     通道添加: {channel_name} ({fmt_name})')
     except Exception:
         # 通道已存在或添加失败（已存在是正常的）
         pass

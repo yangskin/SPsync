@@ -379,7 +379,27 @@ class TestExtractChannelsPerMaterialBindings:
 class TestExtractChannelsPackedSuffix:
     """测试 extract_channels_from_materials 的 packed channel suffix 展开。"""
 
-    PACKED_BINDINGS = {
+    # ── 新格式：parameter_bindings + texture_definitions ──
+    NEW_BINDINGS = {
+        "D": "BaseColor_Texture",
+        "N": "Normal_Texture",
+        "MRO": "Packed_Texture",
+        "H": "Height_Texture",
+    }
+    MRO_TEX_DEFS = [
+        {
+            "suffix": "MRO",
+            "name": "Packed_MRO",
+            "channels": {
+                "R": {"from": "Metallic", "ch": "R"},
+                "G": {"from": "Roughness", "ch": "R"},
+                "B": {"from": "AmbientOcclusion", "ch": "R"},
+            },
+        }
+    ]
+
+    # ── 旧格式：.R/.G/.B 后缀 ──
+    LEGACY_BINDINGS = {
         "D": "BaseColor_Texture",
         "N": "Normal_Texture",
         "M": "Packed_Texture.R",
@@ -388,24 +408,26 @@ class TestExtractChannelsPackedSuffix:
         "H": "Height_Texture",
     }
 
-    def test_packed_texture_expands_to_three_channels(self):
-        """Packed Texture 应展开为 Metallic + Roughness + AO。"""
+    def test_packed_texture_expands_new_format(self):
+        """新格式：Packed Texture 应展开为 Metallic + Roughness + AO。"""
         mats = [{"textures": [
             {"texture_property_name": "Packed_Texture"},
-        ], "parameter_bindings": self.PACKED_BINDINGS}]
+        ], "parameter_bindings": self.NEW_BINDINGS,
+           "texture_definitions": self.MRO_TEX_DEFS}]
         channels = extract_channels_from_materials(mats)
         assert "Metallic" in channels
         assert "Roughness" in channels
         assert "AO" in channels
 
-    def test_packed_plus_normal_textures(self):
-        """Packed + 普通贴图混合。"""
+    def test_packed_plus_normal_new_format(self):
+        """新格式：Packed + 普通贴图混合。"""
         mats = [{"textures": [
             {"texture_property_name": "BaseColor_Texture"},
             {"texture_property_name": "Normal_Texture"},
             {"texture_property_name": "Packed_Texture"},
             {"texture_property_name": "Height_Texture"},
-        ], "parameter_bindings": self.PACKED_BINDINGS}]
+        ], "parameter_bindings": self.NEW_BINDINGS,
+           "texture_definitions": self.MRO_TEX_DEFS}]
         channels = extract_channels_from_materials(mats)
         assert "BaseColor" in channels
         assert "Normal" in channels
@@ -414,18 +436,43 @@ class TestExtractChannelsPackedSuffix:
         assert "AO" in channels
         assert "Height" in channels
 
-    def test_packed_deduplicates(self):
-        """多材质共用相同 packed 贴图不应产生重复通道。"""
-        mats = [
-            {"textures": [{"texture_property_name": "Packed_Texture"}],
-             "parameter_bindings": self.PACKED_BINDINGS},
-            {"textures": [{"texture_property_name": "Packed_Texture"}],
-             "parameter_bindings": self.PACKED_BINDINGS},
-        ]
+    def test_packed_deduplicates_new_format(self):
+        """新格式：多材质共用相同 packed 贴图不应产生重复通道。"""
+        mat_data = {"textures": [{"texture_property_name": "Packed_Texture"}],
+                    "parameter_bindings": self.NEW_BINDINGS,
+                    "texture_definitions": self.MRO_TEX_DEFS}
+        mats = [mat_data, mat_data]
         channels = extract_channels_from_materials(mats)
         assert channels.count("Metallic") == 1
         assert channels.count("Roughness") == 1
         assert channels.count("AO") == 1
+
+    # ── 旧格式向后兼容 ──
+    def test_packed_texture_expands_legacy(self):
+        """旧格式 .R/.G/.B 仍能展开。"""
+        mats = [{"textures": [
+            {"texture_property_name": "Packed_Texture"},
+        ], "parameter_bindings": self.LEGACY_BINDINGS}]
+        channels = extract_channels_from_materials(mats)
+        assert "Metallic" in channels
+        assert "Roughness" in channels
+        assert "AO" in channels
+
+    def test_packed_plus_normal_legacy(self):
+        """旧格式 Packed + 普通贴图混合。"""
+        mats = [{"textures": [
+            {"texture_property_name": "BaseColor_Texture"},
+            {"texture_property_name": "Normal_Texture"},
+            {"texture_property_name": "Packed_Texture"},
+            {"texture_property_name": "Height_Texture"},
+        ], "parameter_bindings": self.LEGACY_BINDINGS}]
+        channels = extract_channels_from_materials(mats)
+        assert "BaseColor" in channels
+        assert "Normal" in channels
+        assert "Metallic" in channels
+        assert "Roughness" in channels
+        assert "AO" in channels
+        assert "Height" in channels
 
     def test_non_packed_bindings_unchanged(self):
         """无后缀的普通 bindings 行为不变。"""
@@ -439,5 +486,5 @@ class TestExtractChannelsPackedSuffix:
             {"texture_property_name": "Packed_Texture"},
         ], "parameter_bindings": old_bindings}]
         channels = extract_channels_from_materials(mats)
-        # 旧格式 MRO → Roughness（整包映射向后兼容）
+        # 无 texture_definitions 时，MRO 走 map_ue_to_sp_with_bindings → Roughness
         assert "Roughness" in channels

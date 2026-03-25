@@ -154,13 +154,24 @@ def refresh_textures(params_json):
       "material_name": "MI_Body",
       "material_slot_name": "Body",
       "config_profile": "Prop",
+      // parameter_bindings: 纯 suffix → MI 参数名绑定
       "parameter_bindings": {
         "D": "BaseColor_Texture",
         "N": "Normal_Texture",
-        "M": "Packed_Texture.R",
-        "R": "Packed_Texture.G",
-        "AO": "Packed_Texture.B"
+        "MRO": "Packed_Texture"
       },
+      // texture_definitions: 通道打包定义（来自 config processing 段）
+      "texture_definitions": [
+        {
+          "suffix": "MRO",
+          "name": "Packed_MRO",
+          "channels": {
+            "R": {"from": "Metallic", "ch": "R"},
+            "G": {"from": "Roughness", "ch": "R"},
+            "B": {"from": "AmbientOcclusion", "ch": "R"}
+          }
+        }
+      ],
       // 贴图列表（含 UE 资产路径，用于回传定位）
       "textures": [
         {
@@ -189,29 +200,32 @@ def refresh_textures(params_json):
 
 ### 3.2 导出映射算法
 
-从存储的 `parameter_bindings` + `textures` 逆向生成 SP 导出 maps：
+从存储的 `parameter_bindings` + `texture_definitions` + `textures` 逆向生成 SP 导出 maps：
 
 ```
-输入: parameter_bindings = {"D": "BaseColor_Texture", "M": "Packed_Texture.R", "R": "Packed_Texture.G", "AO": "Packed_Texture.B", "N": "Normal_Texture"}
+输入: parameter_bindings = {"D": "BaseColor_Texture", "MRO": "Packed_Texture", "N": "Normal_Texture"}
+       texture_definitions = [{"suffix": "MRO", "channels": {"R": {"from": "Metallic"}, "G": {"from": "Roughness"}, "B": {"from": "AmbientOcclusion"}}}]
        textures = [{prop: "BaseColor_Texture", name: "T_Body_BaseColor"}, ...]
 
 步骤:
-  1. 遍历 bindings，按 base_texture 分组：
-     BaseColor_Texture → [("D", None)]               # 无后缀 = 完整通道
+  1. 遍历 bindings + texture_definitions，检测打包关系：
+     BaseColor_Texture → [("D", None)]               # 无 texture_definitions 匹配 = 完整通道
      Normal_Texture    → [("N", None)]
-     Packed_Texture    → [("M", "R"), ("R", "G"), ("AO", "B")]  # 有后缀 = 打包
+     Packed_Texture    → MRO suffix → texture_definitions channels → 多源 packed
 
   2. 对每个分组，查找对应 texture_name：
      BaseColor_Texture → "T_Body_BaseColor"
      Packed_Texture    → "T_Body_MRO"
 
   3. 生成 export map：
-     T_Body_BaseColor: channels=[{dest:"R", src:"R", map:"BaseColor"}, {dest:"G",...}, {dest:"B",...}]
-     T_Body_MRO:       channels=[{dest:"R", src:"R", map:"Metallic"}, {dest:"G", src:"R", map:"Roughness"}, {dest:"B", src:"R", map:"AO"}]
-     T_Body_Normal:    channels=[{dest:"R", src:"R", map:"Normal"}, ...]
+     T_Body_BaseColor: channels=[{dest:"R", src:"R", map:"basecolor"}, ...]
+     T_Body_MRO:       channels=[{dest:"R", src:"L", map:"metallic"}, {dest:"G", src:"L", map:"roughness"}, {dest:"B", src:"L", map:"ambientOcclusion"}]
+     T_Body_Normal:    channels=[{dest:"R", src:"R", map:"Normal_DirectX"}, ...]
 
 输出: SP export config 的 maps 数组
 ```
+
+> **向后兼容**: 旧格式 `.R/.G/.B` 后缀（如 `"M": "Packed_Texture.R"`）仍然可以被正确解析。
 
 **通道分类规则**:
 
@@ -274,13 +288,16 @@ metadata.set("ue_material_defs", json.dumps(roundtrip_data))
 ```python
 def build_roundtrip_export_maps(
     material: dict,
-    parameter_bindings: dict[str, str],
 ) -> list[dict]:
-    """从 UE 材质定义生成 SP 导出 maps 配置。"""
+    """从 UE 材质定义生成 SP 导出 maps 配置。
+    
+    根据 parameter_bindings + texture_definitions 推导打包关系。
+    支持新格式（texture_definitions）和旧格式（.R/.G/.B 后缀）。
+    """
 ```
 
 核心算法：
-1. 遍历 `parameter_bindings`，用 `parse_channel_suffix()` 分组
+1. 遍历 `parameter_bindings`，结合 `texture_definitions` 推导打包关系
 2. 匹配 `material["textures"]` 获取文件名
 3. 按上面 §3.2 的规则生成 channels 数组
 

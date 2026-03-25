@@ -246,22 +246,27 @@ def parse_channel_suffix(binding_value: str) -> tuple[str, dict[str, float] | No
 def resolve_packed_channels(
     texture_param_name: str,
     parameter_bindings: dict[str, str],
+    texture_definitions: list[dict] | None = None,
 ) -> list[tuple[str, dict[str, float]]]:
-    """从 parameter_bindings 中解析指定贴图的所有 Packed 通道拆分。
+    """从 texture_definitions 或 parameter_bindings 中解析指定贴图的所有 Packed 通道拆分。
 
-    遍历 bindings，对每个 value 调用 parse_channel_suffix()，
-    若基础贴图名匹配 texture_param_name，则收集 (sp_channel, weights)。
+    优先使用 texture_definitions（通过 suffix 匹配 binding key，再读 channels 定义）；
+    若无 texture_definitions 则 fallback 到旧版 .R/.G/.B 后缀解析（向后兼容）。
 
     Args:
         texture_param_name: UE 贴图参数名，如 "Packed_Texture"。
-        parameter_bindings: 配置驱动的映射，如 {"M": "Packed_Texture.R", "R": "Packed_Texture.G"}。
+        parameter_bindings: 配置映射，如 {"MRO": "Packed_Texture", "D": "BaseColor_Texture"}。
+        texture_definitions: 可选的 texture_definitions 列表（来自 config processing 段）。
 
     Returns:
         [(sp_channel_name, grayscale_weights), ...] — 空列表表示该贴图无 packed 拆分。
 
-    >>> resolve_packed_channels("Packed_Texture", {"M": "Packed_Texture.R", "R": "Packed_Texture.G", "AO": "Packed_Texture.B"})
+    >>> tex_defs = [{"suffix": "MRO", "name": "Packed_MRO", "channels": {
+    ...     "R": {"from": "Metallic", "ch": "R"}, "G": {"from": "Roughness", "ch": "R"},
+    ...     "B": {"from": "AmbientOcclusion", "ch": "R"}}}]
+    >>> resolve_packed_channels("Packed_Texture", {"MRO": "Packed_Texture"}, tex_defs)
     [('Metallic', {'Red': 1.0, 'Green': 0.0, 'Blue': 0.0, 'Alpha': 0.0}), ('Roughness', {'Red': 0.0, 'Green': 1.0, 'Blue': 0.0, 'Alpha': 0.0}), ('AO', {'Red': 0.0, 'Green': 0.0, 'Blue': 1.0, 'Alpha': 0.0})]
-    >>> resolve_packed_channels("BaseColor_Texture", {"D": "BaseColor_Texture", "N": "Normal_Texture"})
+    >>> resolve_packed_channels("BaseColor_Texture", {"D": "BaseColor_Texture"}, tex_defs)
     []
     >>> resolve_packed_channels("Packed_Texture", {})
     []
@@ -269,18 +274,75 @@ def resolve_packed_channels(
     if not parameter_bindings:
         return []
 
-    result: list[tuple[str, dict[str, float]]] = []
+    # 找到 binding key（suffix）→ 匹配 texture_param_name
+    matched_suffix = None
     for suffix_key, binding_value in parameter_bindings.items():
+        # 新格式: 值就是贴图参数名（无 .R/.G/.B）
         base_tex, weights = parse_channel_suffix(binding_value)
-        if weights is None:
-            continue
-        if base_tex != texture_param_name:
-            continue
-        # suffix_key (如 "M") → SP 通道名 (如 "Metallic")
-        sp_channel = _SUFFIX_TO_SP_CHANNEL.get(suffix_key.upper())
-        if sp_channel:
-            result.append((sp_channel, weights))
-    return result
+        if base_tex == texture_param_name:
+            if weights is not None:
+                # 旧格式 fallback（.R/.G/.B）— 直走旧逻辑
+                matched_suffix = None
+                break
+            matched_suffix = suffix_key
+
+    # ── 旧格式 fallback：.R/.G/.B 后缀 ──
+    if matched_suffix is None:
+        result: list[tuple[str, dict[str, float]]] = []
+        for suffix_key, binding_value in parameter_bindings.items():
+            base_tex, weights = parse_channel_suffix(binding_value)
+            if weights is None:
+                continue
+            if base_tex != texture_param_name:
+                continue
+            sp_channel = _SUFFIX_TO_SP_CHANNEL.get(suffix_key.upper())
+            if sp_channel:
+                result.append((sp_channel, weights))
+        return result
+
+    # ── 新格式：从 texture_definitions 读取通道定义 ──
+    if texture_definitions:
+        for td in texture_definitions:
+            if td.get("suffix") == matched_suffix:
+                channels = td.get("channels", {})
+                # 只有多源通道（不同 from）才算 packed
+                sources = {
+                    ch_def.get("from", "")
+                    for ch_def in channels.values()
+                    if isinstance(ch_def, dict) and "from" in ch_def
+                }
+                if len(sources) <= 1:
+                    return []
+                result = []
+                for dest_ch, ch_def in channels.items():
+                    if not isinstance(ch_def, dict) or "from" not in ch_def:
+                        continue
+                    source_name = ch_def["from"]
+                    sp_channel = _SOURCE_TO_SP_CHANNEL.get(source_name)
+                    if not sp_channel:
+                        continue
+                    weights = CHANNEL_SUFFIX_WEIGHTS.get(dest_ch.upper())
+                    if weights:
+                        result.append((sp_channel, dict(weights)))
+                return result
+
+    return []
+
+
+# texture_definitions 中 "from" 值 → SP ChannelType 映射
+_SOURCE_TO_SP_CHANNEL: dict[str, str] = {
+    "BaseColor": "BaseColor",
+    "Normal": "Normal",
+    "Metallic": "Metallic",
+    "Roughness": "Roughness",
+    "AmbientOcclusion": "AO",
+    "AO": "AO",
+    "Emissive": "Emissive",
+    "Opacity": "Opacity",
+    "Height": "Height",
+    "Specular": "Specular",
+    "SubsurfaceColor": "Specular",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -310,24 +372,28 @@ def build_roundtrip_export_maps(
 ) -> list[dict]:
     """从单个 UE 材质定义生成 SP 导出 maps 配置。
 
-    根据 parameter_bindings 和 textures，按 UE 原始贴图打包方式逆向生成
+    根据 parameter_bindings + texture_definitions，按 UE 原始贴图打包方式逆向生成
     SP export config 的 maps 列表，使导出格式与 UE 原始贴图一致。
 
-    SP 导出 channel 格式（由 probe_export_preset.py 探查确认）：
-    - srcMapName: SP 内部通道名（如 "basecolor"、"ambientOcclusion"）
-    - srcChannel: 分量字符（颜色="R"/"G"/"B"，灰度="L"）
-    - destChannel: 分量字符（颜色="R"/"G"/"B"，灰度="L"，packed=目标分量）
-    - Normal: srcMapType="virtualMap", srcMapName="Normal_DirectX"
+    支持两种格式：
+    - 新格式：parameter_bindings 使用纯贴图名（如 "MRO": "Packed_Texture"），
+      配合 texture_definitions 中的 channels 定义推导打包关系。
+    - 旧格式（向后兼容）：parameter_bindings 值含 .R/.G/.B 后缀。
 
     Args:
-        material: UE 材质定义（含 parameter_bindings 和 textures）。
+        material: UE 材质定义（含 parameter_bindings, textures, 可选 texture_definitions）。
 
     Returns:
         SP export maps 列表，每个元素是一个 map dict。
 
     >>> mat = {
     ...     "parameter_bindings": {"D": "BaseColor_Texture", "N": "Normal_Texture",
-    ...                            "M": "Packed_Texture.R", "R": "Packed_Texture.G", "AO": "Packed_Texture.B"},
+    ...                            "MRO": "Packed_Texture"},
+    ...     "texture_definitions": [
+    ...         {"suffix": "MRO", "name": "Packed_MRO", "channels": {
+    ...             "R": {"from": "Metallic", "ch": "R"},
+    ...             "G": {"from": "Roughness", "ch": "R"},
+    ...             "B": {"from": "AmbientOcclusion", "ch": "R"}}}],
     ...     "textures": [
     ...         {"texture_property_name": "BaseColor_Texture", "texture_name": "T_Body_BaseColor", "texture_path": "/Game/T_Body_BaseColor"},
     ...         {"texture_property_name": "Normal_Texture", "texture_name": "T_Body_Normal", "texture_path": "/Game/T_Body_Normal"},
@@ -348,6 +414,7 @@ def build_roundtrip_export_maps(
     """
     bindings = material.get("parameter_bindings", {})
     textures = material.get("textures", [])
+    tex_defs = material.get("texture_definitions", [])
     if not bindings:
         return []
 
@@ -358,20 +425,50 @@ def build_roundtrip_export_maps(
         if prop:
             tex_name_map[prop] = tex.get("texture_name", "")
 
+    # 建立 suffix → texture_definition 映射
+    td_by_suffix: dict[str, dict] = {}
+    for td in tex_defs:
+        s = td.get("suffix", "")
+        if s:
+            td_by_suffix[s] = td
+
     # 按 base_texture 分组 bindings
-    # groups: {base_tex_param: [(suffix_key, channel_suffix_char_or_None), ...]}
     groups: dict[str, list[tuple[str, str | None]]] = {}
     for suffix_key, binding_value in bindings.items():
         base_tex, weights = parse_channel_suffix(binding_value)
-        # weights 不为 None 表示 packed 通道
         suffix_char = None
         if weights is not None:
-            # 检测是哪个通道后缀
+            # 旧格式 .R/.G/.B — 检测通道后缀
             for ch, w in CHANNEL_SUFFIX_WEIGHTS.items():
                 if w == weights:
                     suffix_char = ch
                     break
-        groups.setdefault(base_tex, []).append((suffix_key, suffix_char))
+            groups.setdefault(base_tex, []).append((suffix_key, suffix_char))
+        else:
+            # 新格式：从 texture_definitions 推导打包关系
+            td = td_by_suffix.get(suffix_key)
+            if td:
+                channels = td.get("channels", {})
+                sources = {
+                    ch_def.get("from", "")
+                    for ch_def in channels.values()
+                    if isinstance(ch_def, dict) and "from" in ch_def
+                }
+                if len(sources) > 1:
+                    # 多源 = packed 贴图
+                    for dest_ch, ch_def in channels.items():
+                        if not isinstance(ch_def, dict) or "from" not in ch_def:
+                            continue
+                        source_name = ch_def["from"]
+                        sp_channel = _SOURCE_TO_SP_CHANNEL.get(source_name)
+                        if sp_channel:
+                            # 用 source_name 作为伪 suffix_key，dest_ch 作为 packed 通道
+                            groups.setdefault(base_tex, []).append(
+                                (f"_src_{source_name}", dest_ch.upper()))
+                else:
+                    groups.setdefault(base_tex, []).append((suffix_key, None))
+            else:
+                groups.setdefault(base_tex, []).append((suffix_key, None))
 
     maps = []
     for base_tex, entries in groups.items():
@@ -381,12 +478,16 @@ def build_roundtrip_export_maps(
 
         has_packed = any(sc is not None for _, sc in entries)
         if has_packed:
-            # Packed 贴图：多个灰度通道打包到一个文件
             channels = []
             for suffix_key, suffix_char in entries:
                 if suffix_char is None:
                     continue
-                sp_channel = _SUFFIX_TO_SP_CHANNEL.get(suffix_key.upper())
+                # 新格式伪 key: "_src_Metallic" → sp_channel="Metallic"
+                if suffix_key.startswith("_src_"):
+                    source_name = suffix_key[5:]
+                    sp_channel = _SOURCE_TO_SP_CHANNEL.get(source_name)
+                else:
+                    sp_channel = _SUFFIX_TO_SP_CHANNEL.get(suffix_key.upper())
                 if not sp_channel:
                     continue
                 channels.append({
@@ -398,13 +499,11 @@ def build_roundtrip_export_maps(
             if channels:
                 maps.append({"fileName": tex_name, "channels": channels})
         else:
-            # 普通贴图（单通道或颜色通道）
             for suffix_key, _ in entries:
                 sp_channel = _SUFFIX_TO_SP_CHANNEL.get(suffix_key.upper())
                 if not sp_channel:
                     continue
                 if sp_channel == "Normal":
-                    # Normal 使用 virtualMap 获取最终法线
                     channels = [
                         {"destChannel": c, "srcChannel": c,
                          "srcMapType": "virtualMap",
@@ -412,7 +511,6 @@ def build_roundtrip_export_maps(
                         for c in ("R", "G", "B")
                     ]
                 elif sp_channel in _COLOR_CHANNELS:
-                    # 颜色通道：R/G/B 三条映射
                     channels = [
                         {"destChannel": c, "srcChannel": c,
                          "srcMapType": "documentMap",
@@ -420,7 +518,6 @@ def build_roundtrip_export_maps(
                         for c in ("R", "G", "B")
                     ]
                 else:
-                    # 灰度通道：单条 L 映射
                     channels = [{
                         "destChannel": "L",
                         "srcChannel": "L",

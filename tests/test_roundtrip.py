@@ -38,10 +38,19 @@ UE_DATA_FULL = {
             "parameter_bindings": {
                 "D": "BaseColor_Texture",
                 "N": "Normal_Texture",
-                "M": "Packed_Texture.R",
-                "R": "Packed_Texture.G",
-                "AO": "Packed_Texture.B",
+                "MRO": "Packed_Texture",
             },
+            "texture_definitions": [
+                {
+                    "suffix": "MRO",
+                    "name": "Packed_MRO",
+                    "channels": {
+                        "R": {"from": "Metallic", "ch": "R"},
+                        "G": {"from": "Roughness", "ch": "R"},
+                        "B": {"from": "AmbientOcclusion", "ch": "R"},
+                    },
+                }
+            ],
             "textures": [
                 {
                     "texture_property_name": "BaseColor_Texture",
@@ -87,8 +96,18 @@ class TestBuildRoundtripMetadata:
     def test_preserves_bindings(self):
         rt = build_roundtrip_metadata(UE_DATA_FULL)
         mat = rt["materials"][0]
-        assert mat["parameter_bindings"]["M"] == "Packed_Texture.R"
+        assert mat["parameter_bindings"]["MRO"] == "Packed_Texture"
         assert mat["config_profile"] == "Prop"
+
+    def test_preserves_texture_definitions(self):
+        """texture_definitions 应保留到 roundtrip metadata 中。"""
+        rt = build_roundtrip_metadata(UE_DATA_FULL)
+        mat = rt["materials"][0]
+        td = mat.get("texture_definitions")
+        assert td is not None
+        assert len(td) == 1
+        assert td[0]["suffix"] == "MRO"
+        assert "R" in td[0]["channels"]
 
     def test_stores_texture_set_name(self):
         """_matched_ts_name 应存为 texture_set_name。"""

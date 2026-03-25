@@ -265,7 +265,26 @@ class TestParseChannelSuffix:
 class TestResolvePackedChannels:
     """测试 resolve_packed_channels。"""
 
+    # ── 新格式测试数据 ──
     MRO_BINDINGS = {
+        "D": "BaseColor_Texture",
+        "N": "Normal_Texture",
+        "MRO": "Packed_Texture",
+    }
+    MRO_TEX_DEFS = [
+        {
+            "suffix": "MRO",
+            "name": "Packed_MRO",
+            "channels": {
+                "R": {"from": "Metallic", "ch": "R"},
+                "G": {"from": "Roughness", "ch": "R"},
+                "B": {"from": "AmbientOcclusion", "ch": "R"},
+            },
+        }
+    ]
+
+    # ── 旧格式测试数据（向后兼容）──
+    LEGACY_BINDINGS = {
         "D": "BaseColor_Texture",
         "N": "Normal_Texture",
         "M": "Packed_Texture.R",
@@ -273,16 +292,17 @@ class TestResolvePackedChannels:
         "AO": "Packed_Texture.B",
     }
 
+    # ── 新格式测试 ──
     def test_mro_packed_texture(self):
-        """MRO Packed Texture 应解析出 3 个通道。"""
-        result = resolve_packed_channels("Packed_Texture", self.MRO_BINDINGS)
+        """MRO Packed Texture 应解析出 3 个通道（新格式 texture_definitions）。"""
+        result = resolve_packed_channels("Packed_Texture", self.MRO_BINDINGS, self.MRO_TEX_DEFS)
         assert len(result) == 3
         sp_channels = {ch for ch, _ in result}
         assert sp_channels == {"Metallic", "Roughness", "AO"}
 
     def test_mro_weights(self):
-        """验证每个通道的权重正确。"""
-        result = resolve_packed_channels("Packed_Texture", self.MRO_BINDINGS)
+        """验证每个通道的权重正确（新格式）。"""
+        result = resolve_packed_channels("Packed_Texture", self.MRO_BINDINGS, self.MRO_TEX_DEFS)
         result_dict = {ch: w for ch, w in result}
         assert result_dict["Metallic"]["Red"] == 1.0
         assert result_dict["Metallic"]["Green"] == 0.0
@@ -293,7 +313,7 @@ class TestResolvePackedChannels:
 
     def test_non_packed_texture(self):
         """无通道后缀的贴图应返回空列表。"""
-        result = resolve_packed_channels("BaseColor_Texture", self.MRO_BINDINGS)
+        result = resolve_packed_channels("BaseColor_Texture", self.MRO_BINDINGS, self.MRO_TEX_DEFS)
         assert result == []
 
     def test_empty_bindings(self):
@@ -301,11 +321,27 @@ class TestResolvePackedChannels:
         assert result == []
 
     def test_no_matching_texture(self):
-        result = resolve_packed_channels("OtherTexture", self.MRO_BINDINGS)
+        result = resolve_packed_channels("OtherTexture", self.MRO_BINDINGS, self.MRO_TEX_DEFS)
         assert result == []
 
+    # ── 旧格式向后兼容测试 ──
+    def test_legacy_mro_packed(self):
+        """旧格式 .R/.G/.B 应仍然能解析（无 texture_definitions）。"""
+        result = resolve_packed_channels("Packed_Texture", self.LEGACY_BINDINGS)
+        assert len(result) == 3
+        sp_channels = {ch for ch, _ in result}
+        assert sp_channels == {"Metallic", "Roughness", "AO"}
+
+    def test_legacy_weights(self):
+        """旧格式权重验证。"""
+        result = resolve_packed_channels("Packed_Texture", self.LEGACY_BINDINGS)
+        result_dict = {ch: w for ch, w in result}
+        assert result_dict["Metallic"]["Red"] == 1.0
+        assert result_dict["Roughness"]["Green"] == 1.0
+        assert result_dict["AO"]["Blue"] == 1.0
+
     def test_alpha_channel(self):
-        """测试 .A 通道提取。"""
+        """测试 .A 通道提取（旧格式）。"""
         bindings = {"O": "Packed_Texture.A"}
         result = resolve_packed_channels("Packed_Texture", bindings)
         assert len(result) == 1
@@ -313,8 +349,13 @@ class TestResolvePackedChannels:
         assert result[0][1]["Alpha"] == 1.0
 
     def test_single_channel_extraction(self):
-        """单通道提取。"""
+        """单通道提取（旧格式）。"""
         bindings = {"M": "MRO_Texture.R"}
         result = resolve_packed_channels("MRO_Texture", bindings)
         assert len(result) == 1
         assert result[0][0] == "Metallic"
+
+    def test_no_tex_defs_new_format_returns_empty(self):
+        """新格式 bindings 但无 texture_definitions 时返回空列表。"""
+        result = resolve_packed_channels("Packed_Texture", self.MRO_BINDINGS)
+        assert result == []
