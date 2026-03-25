@@ -422,7 +422,13 @@ def receive_from_ue(json_str: str, mesh_path: str) -> None:
 
 
 def _on_project_ready(state) -> None:
-    """ProjectEditionEntered 回调 — 项目完全就绪，处理贴图。"""
+    """ProjectEditionEntered 回调 — 项目完全就绪，处理贴图。
+
+    三阶段流程（性能优化：I/O 与计算分离）：
+      Phase 0 — 预处理：匹配 TextureSet、解析 packed 通道、预热 Filter 缓存
+      Phase 1 — 批量导入：集中所有贴图 import_project_resource()（全局去重）
+      Phase 2 — 批量创建图层：从缓存取资源引用，零 I/O 创建 Fill Layer
+    """
     global _pending_ue_data
     import substance_painter.event
     import substance_painter.resource as resource
@@ -459,7 +465,18 @@ def _on_project_ready(state) -> None:
     ts_names = list(ts_name_map.keys())
     print(f'[SPsync] TextureSets ({len(ts_names)}): {ts_names}')
 
-    # ⑥ 为每个材质匹配 TextureSet，使用 material_slot_name + per-material bindings
+    # =========================================================================
+    # Phase 0 — 预处理：匹配 TextureSet + 解析 packed 通道 + 预热 Filter 缓存
+    # =========================================================================
+    print('[SPsync] Phase 0: 预处理...')
+
+    # 预热 Grayscale Conversion Filter 缓存（避免在图层创建循环中首次查询）
+    _find_grayscale_filter(resource)
+
+    # 每个材质的预处理结果
+    # mat_prep: [{mat, mat_bindings, resolve_channel, packed_tex_map, stack, matched_ts}, ...]
+    mat_prep_list: list[dict] = []
+
     for mat in data.get("materials", []):
         mat_name = mat.get("material_name", "?")
         slot_name = mat.get("material_slot_name", "")
@@ -508,10 +525,8 @@ def _on_project_ready(state) -> None:
         mat_tex_defs = mat.get("texture_definitions") or data.get("texture_definitions")
 
         # ── 预解析 packed 通道拆分 ──
-        # packed_tex_map: {texture_param_name: [(sp_channel, weights), ...]}
         packed_tex_map: dict[str, list[tuple[str, dict[str, float]]]] = {}
         if mat_bindings:
-            # 收集所有 texture_property_name
             for tex_info in mat.get("textures", []):
                 prop_name = tex_info.get("texture_property_name", "")
                 if prop_name and prop_name not in packed_tex_map:
@@ -521,8 +536,57 @@ def _on_project_ready(state) -> None:
             if packed_tex_map:
                 print(f'[SPsync]   Packed 贴图检测: {list(packed_tex_map.keys())}')
 
-        # ── 已导入资源缓存（同一 packed texture 只导入一次）──
-        imported_resources: dict[str, Any] = {}
+        mat_prep_list.append({
+            "mat": mat,
+            "mat_bindings": mat_bindings,
+            "resolve_channel": resolve_channel,
+            "packed_tex_map": packed_tex_map,
+            "stack": stack,
+            "matched_ts": matched_ts,
+        })
+
+    # =========================================================================
+    # Phase 1 — 批量导入：收集所有贴图路径（全局去重），集中 I/O
+    # =========================================================================
+    print('[SPsync] Phase 1: 批量导入贴图...')
+
+    # 全局资源缓存（跨材质去重）
+    imported_resources: dict[str, Any] = {}
+
+    # 收集所有需要导入的贴图路径（去重）
+    all_export_paths: set[str] = set()
+    for prep in mat_prep_list:
+        for tex_info in prep["mat"].get("textures", []):
+            export_path = tex_info.get("texture_export_path", "")
+            if export_path:
+                all_export_paths.add(export_path)
+
+    print(f'[SPsync]   共 {len(all_export_paths)} 张贴图需导入')
+
+    # 集中执行所有导入（I/O 密集阶段）
+    for export_path in all_export_paths:
+        try:
+            res = resource.import_project_resource(
+                export_path, resource.Usage.TEXTURE
+            )
+            imported_resources[export_path] = res
+            print(f'[SPsync]   资源导入成功: {res.identifier()}')
+        except Exception as e:
+            print(f'[SPsync]   资源导入失败: {export_path} — {e}')
+
+    print(f'[SPsync]   导入完成: {len(imported_resources)}/{len(all_export_paths)} 成功')
+
+    # =========================================================================
+    # Phase 2 — 批量创建图层：从缓存取资源引用，零 I/O
+    # =========================================================================
+    print('[SPsync] Phase 2: 创建图层...')
+
+    for prep in mat_prep_list:
+        mat = prep["mat"]
+        packed_tex_map = prep["packed_tex_map"]
+        stack = prep["stack"]
+        resolve_channel = prep["resolve_channel"]
+        matched_ts = prep["matched_ts"]
 
         for tex_info in mat.get("textures", []):
             export_path = tex_info.get("texture_export_path", "")
@@ -533,19 +597,11 @@ def _on_project_ready(state) -> None:
             prop_name = tex_info["texture_property_name"]
             tex_name = tex_info["texture_name"]
 
-            # 导入贴图资源（缓存复用）
-            if export_path in imported_resources:
-                res = imported_resources[export_path]
-            else:
-                try:
-                    res = resource.import_project_resource(
-                        export_path, resource.Usage.TEXTURE
-                    )
-                    imported_resources[export_path] = res
-                    print(f'[SPsync]   资源导入成功: {res.identifier()}')
-                except Exception as e:
-                    print(f'[SPsync]   资源导入失败: {e}')
-                    continue
+            # 从全局缓存取资源引用（Phase 1 已导入）
+            res = imported_resources.get(export_path)
+            if res is None:
+                print(f'[SPsync]   跳过未成功导入的贴图: {tex_name}')
+                continue
 
             # ── Packed Texture 通道拆分流程 ──
             if prop_name in packed_tex_map:
@@ -558,7 +614,7 @@ def _on_project_ready(state) -> None:
                     )
                 continue
 
-            # ── 普通贴图流程（不变）──
+            # ── 普通贴图流程 ──
             sp_channel_name = resolve_channel(prop_name)
             print(f'[SPsync]   贴图: {tex_name} → param={prop_name} → channel={sp_channel_name}')
 
