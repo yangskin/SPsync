@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import json
 import tempfile
 import shutil
 from typing import List
@@ -8,6 +9,7 @@ import substance_painter.export
 import substance_painter.textureset
 import substance_painter.resource
 import substance_painter.event
+import substance_painter.project
 
 IsQt5 = substance_painter.application.version_info() < (10,1,0)
 
@@ -20,6 +22,7 @@ from . sp_sync_ue import ue_sync
 from . sp_sync_config import SPSyncConfig
 from . sp_sync_ui import Ui_SPsync
 from . utils import extract_mesh_name, determine_material_type
+from . sp_channel_map import build_roundtrip_export_config, build_roundtrip_refresh_list
 
 
 class SPSyncExport:
@@ -38,6 +41,8 @@ class SPSyncExport:
         self._current_udim_type = False
         self._current_set_names = []
         self._load_type = False
+        self._roundtrip_mode = False
+        self._roundtrip_ue_defs = None
 
         self._temp_path = tempfile.gettempdir().replace('\\', '/') + "/sp_sync_temp"
         self.clean_temp_folder()
@@ -99,14 +104,22 @@ class SPSyncExport:
         self._current_preset = None
         self._sp_sync_ue.set_material_masked(False)
         self._sp_sync_ue.set_material_translucent(False)
-        self.export_all_set()
+        try:
+            self.export_all_set()
+        except (RuntimeError, ValueError):
+            # ProjectOpened 触发时 texture sets 可能还没就绪，
+            # 后续 ProjectEditionEntered 会再次处理
+            pass
 
-        mesh_path = substance_painter.project.last_imported_mesh_path()
-        self._current_mesh_name = extract_mesh_name(mesh_path)
+        try:
+            mesh_path = substance_painter.project.last_imported_mesh_path()
+            self._current_mesh_name = extract_mesh_name(mesh_path)
 
-        self._current_udim_type = self.get_project_udim_type()
-        self._sp_sync_ue.set_udim_type(self._current_udim_type)
-        self.get_texture_set_material_type()
+            self._current_udim_type = self.get_project_udim_type()
+            self._sp_sync_ue.set_udim_type(self._current_udim_type)
+            self.get_texture_set_material_type()
+        except (RuntimeError, ValueError):
+            pass
 
     def on_project_close(self):
         self._load_type = False
@@ -142,6 +155,9 @@ class SPSyncExport:
         self._ui.mesh_scale.valueChanged.connect(self._mesh_scale_changed)
         self._ui.tabWidget.setEnabled(True)
         self._load_type = True
+
+        # Round-Trip: 从 metadata 提取 UE 路径并显示到 UI
+        self._try_populate_roundtrip_path()
 
     def wait_shelf_crawling_ended(self, state):
         if state.shelf_name == "starter_assets":
@@ -179,15 +195,39 @@ class SPSyncExport:
         if self._ui.auto_sync.isChecked() or self._export_sync_button_type:
             self._export_sync_button_type = False
 
-            if self._ui.file_path.text() == "":
-                QtWidgets.QMessageBox.information(self._main_widget, "Warning",
-                    "You need to specify the output path under the 'content/' directory in the engine!")
-                return
-
             export_file_list = []
             for item in export_data.textures:
                 for file in export_data.textures[item]:
                     export_file_list.append(file)
+
+            # --- Round-Trip 模式：按原始 UE 路径刷新 ---
+            if self._roundtrip_mode and self._roundtrip_ue_defs is not None:
+                self._roundtrip_mode = False
+                ue_defs = self._roundtrip_ue_defs
+                self._roundtrip_ue_defs = None
+                print(f'[SPsync] Round-Trip 导出完成，{len(export_file_list)} 个文件')
+                for f in export_file_list:
+                    print(f'[SPsync]   → {f}')
+                refresh_items = build_roundtrip_refresh_list(ue_defs, export_file_list)
+                print(f'[SPsync] Round-Trip 匹配 UE 资产: {len(refresh_items)} 个')
+                for item in refresh_items:
+                    print(f'[SPsync]   {item["ue_name"]} → {item["ue_folder"]}')
+                if refresh_items:
+                    print(f'[SPsync] 发送到 UE 刷新...')
+                    self._sp_sync_ue.sync_ue_refresh_textures(
+                        refresh_items, self._reset_all_freeze_ui)
+                else:
+                    print(f'[SPsync] ✗ 无匹配的 UE 资产，跳过刷新')
+                    self._reset_all_freeze_ui(True)
+                self._current_set_names = []
+                self.on_layerstack_changed(None)
+                return
+
+            # --- 常规模式 ---
+            if self._ui.file_path.text() == "":
+                QtWidgets.QMessageBox.information(self._main_widget, "Warning",
+                    "You need to specify the output path under the 'content/' directory in the engine!")
+                return
 
             if self._ui.create_material.isChecked():
                 if self._current_preset.resource_id.name == "SPSYNCDefault":
@@ -209,10 +249,44 @@ class SPSyncExport:
             self._current_set_names = []
             self.on_layerstack_changed(None)
 
-    def sync_textures(self):
+    def sync_textures(self, roundtrip: bool | None = None):
         if not substance_painter.project.is_open():
             return
 
+        # --- 尝试 Round-Trip 模式 ---
+        # roundtrip=None: 自动检测 metadata；True: 强制；False: 跳过
+        if roundtrip is not False:
+            ue_defs = self._try_load_roundtrip_metadata()
+        else:
+            ue_defs = None
+        if ue_defs is not None:
+            mat_count = len(ue_defs.get('materials', []))
+            print(f'[SPsync] Round-Trip 模式：检测到 {mat_count} 个材质定义')
+            self._ui.sync_mesh_button.setEnabled(False)
+            self._ui.sync_button.setEnabled(False)
+            self._export_sync_button_type = True
+            self._roundtrip_mode = True
+            self._roundtrip_ue_defs = ue_defs
+
+            export_config = build_roundtrip_export_config(ue_defs, self._temp_path)
+            # 兜底：用实际 SP TextureSet 名称覆写 exportList，避免名称不匹配
+            if self._current_set_names:
+                export_config["exportList"] = [{"rootPath": n} for n in self._current_set_names]
+                print(f'[SPsync] Round-Trip exportList: {self._current_set_names}')
+            maps_count = len(export_config.get('exportPresets', [{}])[0].get('maps', []))
+            print(f'[SPsync] Round-Trip 导出配置: {maps_count} 个 maps → {self._temp_path}')
+            self.on_layerstack_changed(None)
+            try:
+                substance_painter.export.export_project_textures(export_config)
+            except Exception as e:
+                print(f'[SPsync] ✗ Round-Trip 导出失败: {e}')
+                self._roundtrip_mode = False
+                self._roundtrip_ue_defs = None
+                self._export_sync_button_type = False
+                self._reset_all_freeze_ui(True)
+            return
+
+        # --- 常规模式 ---
         if self._current_preset is None:
             QtWidgets.QMessageBox.information(self._main_widget, "Warning",
                 "Need to specify the texture output configuration!")
@@ -231,6 +305,43 @@ class SPSyncExport:
 
         export_config = self._build_export_config(export_list)
         substance_painter.export.export_project_textures(export_config)
+
+    def _try_populate_roundtrip_path(self):
+        """项目加载时，若存在 roundtrip metadata 则将 UE 贴图文件夹显示到 UI path。"""
+        ue_defs = self._try_load_roundtrip_metadata()
+        if ue_defs is None:
+            return
+        # 从所有贴图路径中提取公共文件夹
+        folders = set()
+        for mat in ue_defs.get('materials', []):
+            for tex in mat.get('textures', []):
+                tp = tex.get('texture_path', '')
+                if '/' in tp:
+                    folders.add(tp.rsplit('/', 1)[0])
+        if len(folders) == 1:
+            ue_folder = folders.pop()
+            self._ui.file_path.setText(ue_folder)
+            print(f'[SPsync] Round-Trip: UE 资产路径 → {ue_folder}')
+        elif folders:
+            # 多个文件夹时取第一个材质的第一个贴图路径
+            first = next(iter(folders))
+            self._ui.file_path.setText(first)
+            print(f'[SPsync] Round-Trip: UE 资产路径（多文件夹，取首个）→ {first}')
+
+    def _try_load_roundtrip_metadata(self):
+        """尝试从 SP 项目元数据加载 UE 材质定义。
+
+        Returns:
+            dict | None: 成功时返回 ue_defs，无元数据或解析失败返回 None。
+        """
+        try:
+            metadata = substance_painter.project.Metadata("sp_sync")
+            raw = metadata.get("ue_material_defs")
+            if raw:
+                return json.loads(raw)
+        except Exception:
+            pass
+        return None
 
     def _build_export_config(self, export_list: list) -> dict:
         newPreset = {
@@ -263,7 +374,7 @@ class SPSyncExport:
             return
 
         self.export_all_set()
-        self.sync_textures()
+        self.sync_textures(roundtrip=False)  # sync_mesh 始终使用标准预设
 
         export_path = self._temp_path + "/" + self._current_mesh_name + ".fbx"
         substance_painter.export.export_mesh(export_path,

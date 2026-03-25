@@ -64,3 +64,48 @@ def import_textures(params_json):
     
     return True
 
+
+def refresh_textures(params_json):
+    """Round-Trip: 按 UE 原始路径刷新指定贴图，保留 sRGB/压缩设置。
+
+    params_json 格式::
+
+        {"textures": [
+            {"local_path": "C:/tmp/T_Body_BC.tga",
+             "ue_folder": "/Game/Textures",
+             "ue_name":   "T_Body_BC"},
+            ...
+        ]}
+    """
+    params = json.loads(params_json)
+    asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
+    refreshed = []
+
+    for item in params["textures"]:
+        local_path = item["local_path"]
+        ue_folder = item["ue_folder"]
+        ue_name = item["ue_name"]
+        ue_asset_path = ue_folder + "/" + ue_name
+
+        if not asset_library.do_assets_exist([ue_asset_path]):
+            continue
+
+        current_texture = asset_library.load_asset(ue_asset_path)
+        srgb = current_texture.get_editor_property("srgb")
+        compression_settings = current_texture.get_editor_property("compression_settings")
+        lod_group = current_texture.get_editor_property("lod_group")
+
+        data = unreal.AutomatedAssetImportData()
+        data.set_editor_property("destination_path", ue_folder)
+        data.set_editor_property("filenames", [local_path])
+        data.set_editor_property("replace_existing", True)
+        asset_tools.import_assets_automated(data)
+
+        current_texture.set_editor_property("srgb", srgb)
+        current_texture.set_editor_property("compression_settings", compression_settings)
+        current_texture.set_editor_property("lod_group", lod_group)
+        refreshed.append(ue_asset_path)
+
+    unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).editor_invalidate_viewports()
+    return True
+

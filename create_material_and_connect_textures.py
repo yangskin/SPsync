@@ -67,7 +67,8 @@ def create_material_and_connect_textures(params_json):
                 bco = get_texture_parameter_value("BCO", target_path, bco_name)
                 mra = get_texture_parameter_value("MRA", target_path, mra_name, False)
                 n = get_texture_parameter_value("N", target_path, n_name, False, True)
-                es = get_texture_parameter_value("ES", target_path, es_name)
+                # 仅在确实存在 ES 贴图时才设置 ES 参数，避免 BCO fallback 污染自发光
+                es = get_texture_parameter_value("ES", target_path, es_name) if emissive_type else None
 
                 material_instance:unreal.MaterialInstanceConstant = get_material_instance(material_path, 
                                                                                         target_path + '/' + bco_name,

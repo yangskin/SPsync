@@ -203,7 +203,8 @@ class ue_sync(QtCore.QObject):
         combined = ""
         for script in scripts:
             with open(os.path.join(self._root_path, script), "r", encoding="utf-8") as f:
-                combined += f"\n# === {script} ===\n"
+                # 分隔注释不能包含 .py，否则 UE ExecuteFile 模式会尝试解析为文件路径
+                combined += f"\n# --- {script[:-3]} ---\n"
                 combined += f.read()
                 combined += "\n"
         return combined
@@ -258,6 +259,21 @@ class ue_sync(QtCore.QObject):
                                                          lambda: self.sync_error.emit("sync_error"), 
                                                          callback, 
                                                          remote_execution.MODE_EVAL_STATEMENT))
+
+    def sync_ue_refresh_textures(self, refresh_items: list, callback: callable = None):
+        """Round-Trip: 按 UE 原始路径刷新贴图。
+
+        refresh_items 格式:
+            [{"local_path": "...", "ue_folder": "...", "ue_name": "..."}, ...]
+        """
+        self._ensure_bootstrap()
+        params_json = json.dumps({"textures": refresh_items})
+        call = f"refresh_textures({params_json!r})"
+        self._ue_sync_remote.add_command(ue_sync_command(
+            call,
+            lambda: self.sync_error.emit("sync_error"),
+            callback,
+            remote_execution.MODE_EVAL_STATEMENT))
           
     def sync_ue_create_material_and_connect_textures(self, target_path, mesh_name, material_names:List[str], material_types, callback:callable):
         self._ensure_bootstrap()
@@ -281,6 +297,8 @@ class ue_sync(QtCore.QObject):
 
     def ue_sync_textures_error(self):
         self._bootstrap_injected = False
+        self._ui.sync_button.setEnabled(True)
+        self._ui.sync_mesh_button.setEnabled(True)
         self._show_help_window() 
         self._ui.auto_sync.setChecked(False)
 

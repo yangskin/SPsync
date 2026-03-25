@@ -197,6 +197,104 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 
 ---
 
+## 阶段四：Grayscale Conversion Filter 通道拆分
+
+- **状态**: ✅ 代码完成（待 E2E 重测）
+- **风险**: ⭐⭐ 低中
+- **前置**: M7 Phase 5 完成 + PoC 探测脚本验证通过（8/8）
+- **目标**: 支持 Packed Texture (MRO/ORM) 在 SP 中自动拆分为独立通道
+
+### 背景
+
+当前 `parameter_bindings` 将 Packed Texture 整包映射到单一通道（如 `"MRO": "Packed_Texture"` → Roughness），
+无法将 R/G/B 通道分别映射到 Metallic/Roughness/AO。
+
+通过 SP 内置的 **Grayscale Conversion** 滤镜，在 Fill Layer 上插入 Filter Effect 并设置 RGBA 权重，可从 Packed Texture 提取任意单通道。
+
+### PoC 验证结论
+
+| 项目 | 结果 |
+|------|------|
+| `resource.search('u:filter n:"Grayscale Conversion"')` | ✅ 1 exact match |
+| `insert_filter_effect(InsertPosition.inside_node(...), filter_id)` | ✅ 成功创建 |
+| `FilterEffectNode.get_source()` → `SourceSubstance` | ✅ 可访问 |
+| `SourceSubstance.get_parameters()` | ✅ 返回 9 个参数 |
+| `SourceSubstance.set_parameters({"Red": 1.0, ...})` | ✅ 写入 + 读回一致 |
+| 参数类型约束 | int 参数必须传 int（不可传 float） |
+
+### 已确认的 Filter 参数
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `grayscale_type` | int | 0 | 0=Desaturation, **1=Channels Weights**, 2=Average, 3=Max, 4=Min |
+| `Red` | float | 0.33 | R 通道权重 [0,1] |
+| `Green` | float | 0.33 | G 通道权重 [0,1] |
+| `Blue` | float | 0.33 | B 通道权重 [0,1] |
+| `Alpha` | float | 0.0 | A 通道权重 [0,1] |
+| `channel_input` | int | 0 | 0=Current Channel, 1=Custom Input |
+| `invert` | int | 0 | 0/1 布尔 |
+| `balance` | float | 0.5 | [0,1] |
+| `contrast` | float | 0.0 | [0,1] |
+
+### 实施任务
+
+| 任务 | 状态 | 文件 | 说明 |
+|------|------|------|------|
+| 15a: 通道后缀解析 | ✅ | `sp_channel_map.py` | `parse_channel_suffix()` + `resolve_packed_channels()` |
+| 15b: Filter as per-channel source | ✅ | `sp_receive.py` | `_create_fill_with_filter()` 重写为 set_source(ch, filter) 方式 |
+| 15c: 动态通道添加 | ✅ | `sp_receive.py` | `_ensure_channel_exists()` — stack.add_channel(AO, L8) |
+| 15d: 集成测试 | 🔲 | E2E | MRO → M/R/AO 三通道拆分验证（待 E2E 重测） |
+
+---
+
+## 阶段五：Round-Trip Sync（SP → UE 贴图回传）
+
+- **状态**: 🔲 待实现
+- **风险**: ⭐⭐ 低中
+- **前置**: 阶段四完成
+- **目标**: 实现 UE→SP→UE 贴图往返更新，点击 SYNC 自动按 UE 原始格式导出并刷新 UE 贴图
+- **详细设计**: [`doc/ROUNDTRIP_SYNC.md`](doc/ROUNDTRIP_SYNC.md)
+
+### 核心思路
+
+```
+UE 发送材质信息 ──→ SP 创建项目 + 存入 Metadata
+                         ↓ 用户编辑
+                    SYNC 按钮触发
+                         ↓
+              检测 Metadata 中有 UE 定义?
+               是 ↓                否 ↓
+           回传模式               预设模式（现有流程）
+               ↓
+    动态生成导出配置（匹配 UE 原始贴图格式）
+               ↓
+    导出到临时目录 → 推送到 UE 原始路径 → 刷新贴图
+```
+
+### 实施任务
+
+| 任务 | 状态 | 文件 | 说明 |
+|------|------|------|------|
+| 5A: Metadata 存储 | 🔲 | `sp_receive.py` | `_on_project_ready()` 末尾写入 UE 材质定义 |
+| 5B: 导出配置生成器 | 🔲 | `sp_channel_map.py` | `build_roundtrip_export_maps()` 纯逻辑 + pytest |
+| 5C: UE 刷新脚本 | 🔲 | `import_textures_ue.py`, `sp_sync_ue.py` | `refresh_textures()` 按原路径刷新 |
+| 5D: SYNC 集成 | 🔲 | `sp_sync_export.py` | `sync_textures()` 添加回传模式检测 |
+| 5E: 探测验证 | 🔲 | `tests/probe_*.py` | srcMapName 格式、Metadata 复杂对象、per-Set 导出 |
+| 5F: 集成测试 | 🔲 | E2E | 完整往返流程验证 |
+
+### 文件变更范围
+
+| 文件 | 变更 |
+|------|------|
+| `sp_receive.py` | 修改：写入 metadata |
+| `sp_channel_map.py` | 新增函数 |
+| `sp_sync_export.py` | 修改：SYNC 回传逻辑 |
+| `import_textures_ue.py` | 新增函数 |
+| `sp_sync_ue.py` | 新增方法 |
+| `tests/test_roundtrip.py` | 新增测试 |
+
+---
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -206,3 +304,5 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 | 2026-03-25 | 0.964++ | 阶段二完成：UE 侧脚本参数化改造。`import_textures_ue.py`/`create_material_and_connect_textures.py`/`import_mesh_ue.py` 去掉占位符改为 JSON 入参；`sp_sync_ue.py` 新增 bootstrap 一次注入机制 + JSON 序列化调用；`sync_camera_ue.py` 移除模块级副作用 |
 | 2026-03-25 | 0.964+++ | 阶段三完成：sp_sync.py 上帝类拆分为 controller / config / export 三个文件 |
 | 2026-03-25 | 0.965 | 稳定性优化：修复 emissive intensity 逗号 Bug、类属性可变状态共享、Signal 重复绑定、Worker 异常流、清理死代码、解耦导出事件、UE 脚本依赖文档化、提取导出配置工厂方法 |
+| 2026-03-25 | 0.966 | 阶段四（Grayscale Conversion）：15a/15b/15c 完成，`_create_fill_with_filter()` 重写为 per-channel source 方式，`_ensure_channel_exists()` 新增，162 测试通过 |
+| 2026-03-25 | — | 阶段五设计完成：Round-Trip Sync 调研与实现路径，详见 `doc/ROUNDTRIP_SYNC.md` |

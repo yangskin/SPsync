@@ -5,6 +5,7 @@
 
 import substance_painter.ui
 from .sp_sync import sp_sync
+from .sp_receive import receive_from_ue
 
 SPSYNCPORTPLUGIN: sp_sync
 
