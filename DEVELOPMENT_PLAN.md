@@ -1,7 +1,7 @@
 # SPsync 开发计划
 
 > 最后更新: 2026-03-25  
-> 当前版本: 0.964 (阶段三已完成)  
+> 当前版本: 0.968 (阶段五已完成)  
 > 目标版本: 1.0
 
 ---
@@ -199,7 +199,7 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 
 ## 阶段四：Grayscale Conversion Filter 通道拆分
 
-- **状态**: ✅ 代码完成（待 E2E 重测）
+- **状态**: ✅ 已完成 (2026-03-25)
 - **风险**: ⭐⭐ 低中
 - **前置**: M7 Phase 5 完成 + PoC 探测脚本验证通过（8/8）
 - **目标**: 支持 Packed Texture (MRO/ORM) 在 SP 中自动拆分为独立通道
@@ -249,7 +249,7 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 
 ## 阶段五：Round-Trip Sync（SP → UE 贴图回传）
 
-- **状态**: 🔲 待实现
+- **状态**: ✅ 已完成 (2026-03-25)
 - **风险**: ⭐⭐ 低中
 - **前置**: 阶段四完成
 - **目标**: 实现 UE→SP→UE 贴图往返更新，点击 SYNC 自动按 UE 原始格式导出并刷新 UE 贴图
@@ -275,22 +275,23 @@ UE 发送材质信息 ──→ SP 创建项目 + 存入 Metadata
 
 | 任务 | 状态 | 文件 | 说明 |
 |------|------|------|------|
-| 5A: Metadata 存储 | 🔲 | `sp_receive.py` | `_on_project_ready()` 末尾写入 UE 材质定义 |
-| 5B: 导出配置生成器 | 🔲 | `sp_channel_map.py` | `build_roundtrip_export_maps()` 纯逻辑 + pytest |
-| 5C: UE 刷新脚本 | 🔲 | `import_textures_ue.py`, `sp_sync_ue.py` | `refresh_textures()` 按原路径刷新 |
-| 5D: SYNC 集成 | 🔲 | `sp_sync_export.py` | `sync_textures()` 添加回传模式检测 |
-| 5E: 探测验证 | 🔲 | `tests/probe_*.py` | srcMapName 格式、Metadata 复杂对象、per-Set 导出 |
-| 5F: 集成测试 | 🔲 | E2E | 完整往返流程验证 |
+| 5A: Metadata 存储 | ✅ | `sp_receive.py` | `_build_roundtrip_metadata()` 写入 UE 材质定义到 SP 项目元数据 |
+| 5B: 导出配置生成器 | ✅ | `sp_channel_map.py` | `build_roundtrip_export_maps/config/refresh_list()` 纯逻辑 + pytest |
+| 5C: UE 刷新脚本 | ✅ | `import_textures_ue.py`, `sp_sync_ue.py` | `refresh_textures()` + `sync_ue_refresh_textures()` 按原路径刷新 |
+| 5D: SYNC 集成 | ✅ | `sp_sync_export.py` | `sync_textures(roundtrip)` 参数 + 自动检测元数据 |
+| 5E: 探测验证 | ✅ | `tests/probe_*.py` | srcMapName 格式验证，AO→ambientOcclusion 确认 |
+| 5F: 集成测试 | ✅ | `tests/test_roundtrip.py` | 185 passed（含 roundtrip 导出配置 + metadata + refresh list） |
 
-### 文件变更范围
+### 文件变更范围（已完成）
 
 | 文件 | 变更 |
 |------|------|
-| `sp_receive.py` | 修改：写入 metadata |
-| `sp_channel_map.py` | 新增函数 |
-| `sp_sync_export.py` | 修改：SYNC 回传逻辑 |
-| `import_textures_ue.py` | 新增函数 |
-| `sp_sync_ue.py` | 新增方法 |
+| `sp_receive.py` | 修改：`_build_roundtrip_metadata()` 写入 metadata |
+| `sp_channel_map.py` | 新增函数：`build_roundtrip_export_maps/config/refresh_list()`，`_SP_SRC_MAP_NAME` 查找表 |
+| `sp_sync_export.py` | 修改：`sync_textures(roundtrip)` 参数 + roundtrip 模式分支 |
+| `import_textures_ue.py` | 新增函数：`refresh_textures()` |
+| `sp_sync_ue.py` | 新增方法：`sync_ue_refresh_textures()` |
+| `create_material_and_connect_textures.py` | Bug Fix：emissive BCO fallback 修复 |
 | `tests/test_roundtrip.py` | 新增测试 |
 
 ---
@@ -306,3 +307,5 @@ UE 发送材质信息 ──→ SP 创建项目 + 存入 Metadata
 | 2026-03-25 | 0.965 | 稳定性优化：修复 emissive intensity 逗号 Bug、类属性可变状态共享、Signal 重复绑定、Worker 异常流、清理死代码、解耦导出事件、UE 脚本依赖文档化、提取导出配置工厂方法 |
 | 2026-03-25 | 0.966 | 阶段四（Grayscale Conversion）：15a/15b/15c 完成，`_create_fill_with_filter()` 重写为 per-channel source 方式，`_ensure_channel_exists()` 新增，162 测试通过 |
 | 2026-03-25 | — | 阶段五设计完成：Round-Trip Sync 调研与实现路径，详见 `doc/ROUNDTRIP_SYNC.md` |
+| 2026-03-25 | 0.967 | 阶段五完成：Round-Trip Sync 5A-5D 全部实现。Metadata 存储 + 动态导出配置 + UE 刷新脚本 + SYNC 集成 |
+| 2026-03-25 | 0.968 | Bug Fix 轮：BaseColor 导出黑色（srcMapName/srcChannel 格式）、AO srcMapName（"ao"→"ambientOcclusion"）、标准导出 metallic（roundtrip 自动检测 bypass）、Emissive BCO fallback 修复。185 测试通过 |
