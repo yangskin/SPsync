@@ -1,7 +1,7 @@
 # SPsync 开发计划
 
-> 最后更新: 2026-03-25  
-> 当前版本: 0.968 (阶段五已完成)  
+> 最后更新: 2026-03-26  
+> 当前版本: 0.970 (阶段七已完成)  
 > 目标版本: 1.0
 
 ---
@@ -296,6 +296,63 @@ UE 发送材质信息 ──→ SP 创建项目 + 存入 Metadata
 
 ---
 
+## 阶段六：贴图尺寸控制（M8 — Texture Size Control）
+
+- **状态**: ✅ 已完成 (2026-03-26)
+- **风险**: ⭐⭐ 低中
+- **前置**: 阶段五完成
+- **目标**: 在 `texture_definitions` 中通过 `max_resolution`（int POT）定义每张贴图最大分辨率，全管线统一
+
+### 核心设计
+
+`max_resolution` 从 AssetCustoms Config 中定义（`TextureProcessingDef.max_resolution: Optional[int]`），通过 UE→SP 数据包传递。SP 端在项目创建和导出时使用该值控制分辨率。
+
+### 实施任务
+
+| 任务 | 状态 | 文件 | 说明 |
+|------|------|------|------|
+| 接收 max_resolution | ✅ | `sp_receive.py` | 从 UE 数据包读取 `texture_definitions[].max_resolution` |
+| 项目创建分辨率 | ✅ | `sp_receive.py` | `_compute_default_resolution()` → `project.Settings.default_texture_resolution` |
+| TextureSet 分辨率 | ✅ | `sp_receive.py` | `TextureSet.set_resolution()` 按 config 动态调整 |
+| 导出尺寸控制 | ✅ | `sp_channel_map.py` | `_compute_export_size_log2()` → `sizeLog2` 注入导出配置 |
+| Clamp 安全范围 | ✅ | 两个文件 | [128, 4096] 像素（log2 ∈ [7, 12]） |
+
+### 文件变更范围
+
+| 文件 | 变更 |
+|------|------|
+| `sp_receive.py` | 新增 `_compute_default_resolution()`，项目创建使用 max(texture_size) |
+| `sp_channel_map.py` | 新增 `_compute_export_size_log2()`，导出配置注入 `sizeLog2` |
+
+---
+
+## 阶段七：分辨率权威分离（M9 — Resolution Authority Separation）
+
+- **状态**: ✅ 已完成 (2026-03-26)
+- **风险**: ⭐ 低
+- **前置**: 阶段六完成
+- **目标**: 解决 `blueprint_get_size_x/y()` 返回运行时分辨率的问题，确保 SP 获得贴图真实像素尺寸
+
+### 问题背景
+
+UE `blueprint_get_size_x/y()` 返回的是运行时分辨率（受 `max_texture_size` / LOD 影响），而非源文件像素尺寸。当 M8 设置了 `max_texture_size` 后，这些 API 返回被限制后的值（如 32×32），导致 SP 创建项目时 `project.create()` 因 textureSize=32 报 ValueError。
+
+### 解决方案
+
+1. **UE 侧**（`sp_bridge.py`）：导出贴图到磁盘后，用 PIL 读取实际文件像素尺寸，覆盖 `texture_size` 值
+2. **SP 侧**：`_compute_default_resolution()` 和 `_compute_export_size_log2()` 增加 Clamp [128, 4096] 保护
+
+### 实施任务
+
+| 任务 | 状态 | 文件 | 说明 |
+|------|------|------|------|
+| texture_size 序列化 | ✅ | `sp_bridge.py`（UE） | 数据包中新增 `texture_size = max(w, h)` |
+| 导出后尺寸刷新 | ✅ | `sp_bridge.py`（UE） | `update_texture_sizes_from_exports()` PIL 读取实际尺寸 |
+| 项目创建 Clamp | ✅ | `sp_receive.py` | `_compute_default_resolution()` Clamp [128, 4096] |
+| 导出 Clamp | ✅ | `sp_channel_map.py` | `_compute_export_size_log2()` Clamp [128, 4096] |
+
+---
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -309,3 +366,5 @@ UE 发送材质信息 ──→ SP 创建项目 + 存入 Metadata
 | 2026-03-25 | — | 阶段五设计完成：Round-Trip Sync 调研与实现路径，详见 `doc/ROUNDTRIP_SYNC.md` |
 | 2026-03-25 | 0.967 | 阶段五完成：Round-Trip Sync 5A-5D 全部实现。Metadata 存储 + 动态导出配置 + UE 刷新脚本 + SYNC 集成 |
 | 2026-03-25 | 0.968 | Bug Fix 轮：BaseColor 导出黑色（srcMapName/srcChannel 格式）、AO srcMapName（"ao"→"ambientOcclusion"）、标准导出 metallic（roundtrip 自动检测 bypass）、Emissive BCO fallback 修复。185 测试通过 |
+| 2026-03-26 | 0.969 | 阶段六完成（M8 Texture Size Control）：`_compute_default_resolution()` + `_compute_export_size_log2()` + Clamp [128, 4096]。`max_resolution` 从 Dict 统一为 int（POT），全管线生效 |
+| 2026-03-26 | 0.970 | 阶段七完成（M9 Resolution Authority Separation）：`texture_size` 来源改为导出文件实际尺寸（PIL），修复 `blueprint_get_size_x/y()` 返回运行时分辨率问题，SP `project.create()` ValueError 修复。191 测试通过 |

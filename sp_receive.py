@@ -369,6 +369,27 @@ def extract_channels_from_materials(materials: list[dict], parameter_bindings: d
 _pending_ue_data: dict | None = None
 
 
+def _compute_default_resolution(data: dict) -> int | None:
+    """从 UE 数据中提取材质贴图的最大实际分辨率。
+
+    遍历所有材质的 textures[].texture_size，返回最大值，
+    并钳制到 SP 允许的范围 [128, 4096]。
+    用于 project.Settings.default_texture_resolution 和 TextureSet 分辨率。
+    若无 texture_size 信息则返回 None。
+    """
+    _SP_MIN_RES = 128
+    _SP_MAX_RES = 4096
+    max_val = 0
+    for mat in data.get("materials", []):
+        for tex in mat.get("textures", []):
+            size = tex.get("texture_size")
+            if isinstance(size, int) and size > 0:
+                max_val = max(max_val, size)
+    if max_val <= 0:
+        return None
+    return max(min(max_val, _SP_MAX_RES), _SP_MIN_RES)
+
+
 def receive_from_ue(json_str: str, mesh_path: str) -> None:
     """从 UE 接收数据并在 SP 中执行完整的项目创建流程。
 
@@ -412,10 +433,16 @@ def receive_from_ue(json_str: str, mesh_path: str) -> None:
     print('[SPsync] 已注册 ProjectEditionEntered 回调')
 
     # ⑤ 创建 SP 项目（异步，立即返回）
-    settings = project.Settings(
+    # 从 texture_definitions 中提取最大分辨率用于项目默认设置
+    default_res = _compute_default_resolution(data)
+    settings_kwargs = dict(
         import_cameras=False,
         normal_map_format=project.NormalMapFormat.DirectX,
     )
+    if default_res:
+        settings_kwargs["default_texture_resolution"] = default_res
+        print(f'[SPsync] 项目默认分辨率: {default_res}')
+    settings = project.Settings(**settings_kwargs)
     print(f'[SPsync] 创建 SP 项目: {mesh_path}')
     project.create(mesh_path, settings=settings)
     print('[SPsync] project.create() 已调用，等待项目就绪...')
@@ -465,6 +492,17 @@ def _on_project_ready(state) -> None:
     ts_names = list(ts_name_map.keys())
     print(f'[SPsync] TextureSets ({len(ts_names)}): {ts_names}')
 
+    # ── 根据 texture_definitions 设置 TextureSet 分辨率 ──
+    default_res = _compute_default_resolution(data)
+    if default_res:
+        try:
+            resolution = textureset.Resolution(default_res, default_res)
+            for ts in all_ts:
+                ts.set_resolution(resolution)
+            print(f'[SPsync] TextureSet 分辨率已设置: {default_res}x{default_res}')
+        except Exception as e:
+            print(f'[SPsync] ⚠ 设置 TextureSet 分辨率失败: {e}')
+
     # =========================================================================
     # Phase 0 — 预处理：匹配 TextureSet + 解析 packed 通道 + 预热 Filter 缓存
     # =========================================================================
@@ -472,6 +510,7 @@ def _on_project_ready(state) -> None:
 
     # 预热 Grayscale Conversion Filter 缓存（避免在图层创建循环中首次查询）
     _find_grayscale_filter(resource)
+    _needs_filter_retry = (_grayscale_filter_id is None)
 
     # 每个材质的预处理结果
     # mat_prep: [{mat, mat_bindings, resolve_channel, packed_tex_map, stack, matched_ts}, ...]
@@ -544,6 +583,63 @@ def _on_project_ready(state) -> None:
             "stack": stack,
             "matched_ts": matched_ts,
         })
+
+    # Phase 1-2 + 后处理委托给可延迟的函数
+    _run_phases_1_2(
+        data, mat_prep_list, resource, textureset, layerstack,
+        needs_filter_retry=_needs_filter_retry,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 延迟重试最大次数与间隔（ms）
+# ---------------------------------------------------------------------------
+_FILTER_RETRY_MAX = 15
+_FILTER_RETRY_INTERVAL_MS = 200
+
+
+def _run_phases_1_2(
+    data: dict,
+    mat_prep_list: list,
+    resource,
+    textureset,
+    layerstack,
+    *,
+    needs_filter_retry: bool = False,
+    _attempt: int = 0,
+) -> None:
+    """Phase 1-2 + 后处理。
+
+    若 Grayscale Conversion Filter 尚未就绪且存在 packed 贴图需求，
+    通过 QTimer.singleShot 延迟重试（非阻塞），最多 _FILTER_RETRY_MAX 次。
+    """
+    # --- 检查是否有 packed 通道需要滤镜 ---
+    has_packed = any(prep["packed_tex_map"] for prep in mat_prep_list)
+
+    if needs_filter_retry and has_packed:
+        # 再次尝试（事件循环已让出，搜索索引可能已加载）
+        _find_grayscale_filter(resource)
+        if _grayscale_filter_id is None:
+            _attempt += 1
+            if _attempt < _FILTER_RETRY_MAX:
+                print(f'[SPsync] ⏳ Grayscale Conversion Filter 尚未就绪，'
+                      f'{_FILTER_RETRY_INTERVAL_MS}ms 后重试...（{_attempt}/{_FILTER_RETRY_MAX}）')
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(
+                    _FILTER_RETRY_INTERVAL_MS,
+                    lambda: _run_phases_1_2(
+                        data, mat_prep_list, resource, textureset, layerstack,
+                        needs_filter_retry=True, _attempt=_attempt,
+                    ),
+                )
+                return  # 让出事件循环
+            else:
+                print(f'[SPsync] ⚠ Grayscale Conversion Filter 仍未就绪'
+                      f'（已等待 {_attempt * _FILTER_RETRY_INTERVAL_MS}ms），'
+                      f'Packed 通道拆分将跳过')
+        else:
+            print(f'[SPsync] Grayscale Conversion Filter 就绪'
+                  f'（第 {_attempt + 1} 次延迟后）')
 
     # =========================================================================
     # Phase 1 — 批量导入：收集所有贴图路径（全局去重），集中 I/O
@@ -696,13 +792,12 @@ _grayscale_filter_id = None
 
 
 def _find_grayscale_filter(resource):
-    """查找 Grayscale Conversion Filter 的 ResourceID（带缓存）。"""
+    """查找 Grayscale Conversion Filter 的 ResourceID（带缓存，单次尝试）。"""
     global _grayscale_filter_id
     if _grayscale_filter_id is not None:
         return _grayscale_filter_id
     results = resource.search(_GRAYSCALE_FILTER_QUERY)
     if not results:
-        print('[SPsync] ⚠ 未找到 Grayscale Conversion Filter')
         return None
     _grayscale_filter_id = results[0].identifier()
     print(f'[SPsync] Grayscale Conversion Filter: {_grayscale_filter_id}')

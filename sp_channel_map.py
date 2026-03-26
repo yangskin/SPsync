@@ -528,6 +528,37 @@ def build_roundtrip_export_maps(
     return maps
 
 
+def _compute_export_size_log2(ue_defs: dict) -> int | None:
+    """从材质贴图的实际分辨率中提取最大值并计算 log2。
+
+    遍历 textures[].texture_size，返回最大值的 log2，
+    并钳制到 SP 允许的范围 [128, 4096]（即 log2 ∈ [7, 12]）。
+
+    Returns:
+        sizeLog2（int）或 None（无 texture_size 信息时）。
+
+    >>> _compute_export_size_log2({"materials": [{"textures": [{"texture_size": 2048}]}]})
+    11
+    >>> _compute_export_size_log2({"materials": [{"textures": [{"texture_size": 32}]}]})
+    7
+    >>> _compute_export_size_log2({"materials": [{"textures": [{"texture_name": "T"}]}]}) is None
+    True
+    """
+    import math
+    _SP_MIN_RES = 128
+    _SP_MAX_RES = 4096
+    max_val = 0
+    for mat in ue_defs.get("materials", []):
+        for tex in mat.get("textures", []):
+            size = tex.get("texture_size")
+            if isinstance(size, int) and size > 0:
+                max_val = max(max_val, size)
+    if max_val <= 0:
+        return None
+    clamped = max(min(max_val, _SP_MAX_RES), _SP_MIN_RES)
+    return int(math.log2(clamped))
+
+
 def build_roundtrip_export_config(
     ue_defs: dict,
     export_path: str,
@@ -567,6 +598,18 @@ def build_roundtrip_export_config(
         if root:
             export_list.append({"rootPath": root})
 
+    export_params: dict = {
+        "fileFormat": file_format,
+        "bitDepth": bit_depth,
+        "dithering": True,
+        "paddingAlgorithm": "infinite",
+    }
+
+    # 从 texture_definitions 中提取最大分辨率，注入 sizeLog2
+    size_log2 = _compute_export_size_log2(ue_defs)
+    if size_log2 is not None:
+        export_params["sizeLog2"] = size_log2
+
     return {
         "exportShaderParams": False,
         "exportPath": export_path,
@@ -577,12 +620,7 @@ def build_roundtrip_export_config(
         }],
         "exportList": export_list if export_list else [{"rootPath": ""}],
         "exportParameters": [{
-            "parameters": {
-                "fileFormat": file_format,
-                "bitDepth": bit_depth,
-                "dithering": True,
-                "paddingAlgorithm": "infinite",
-            }
+            "parameters": export_params,
         }],
     }
 
@@ -594,13 +632,14 @@ def build_roundtrip_refresh_list(
     """从 UE 定义和导出文件列表构建 UE 刷新参数。
 
     将导出文件按文件名匹配回 UE 资产路径。
+    若 texture_definitions 中定义了 max_resolution，会附加 max_texture_size 字段。
 
     Args:
         ue_defs: Metadata 中存储的 UE 材质定义。
         exported_files: SP 导出的文件路径列表。
 
     Returns:
-        [{local_path, ue_folder, ue_name}, ...] 用于 refresh_textures()。
+        [{local_path, ue_folder, ue_name, max_texture_size?}, ...] 用于 refresh_textures()。
 
     >>> defs = {"materials": [{
     ...     "textures": [{"texture_name": "T_BC", "texture_path": "/Game/Tex/T_BC"}]
@@ -616,12 +655,39 @@ def build_roundtrip_refresh_list(
     """
     # 建立 texture_name → texture_path 映射
     name_to_path: dict[str, str] = {}
+    # 建立 texture_name → max_texture_size 映射（通过 property_name → suffix → texture_def）
+    name_to_max_size: dict[str, int] = {}
     for mat in ue_defs.get("materials", []):
+        bindings = mat.get("parameter_bindings", {}) or ue_defs.get("parameter_bindings", {})
+        tex_defs = mat.get("texture_definitions") or ue_defs.get("texture_definitions") or []
+        # 建立 suffix → max_resolution 映射
+        suffix_to_max_res: dict[str, int] = {}
+        for td in tex_defs:
+            suffix = td.get("suffix", "")
+            max_res = td.get("max_resolution")
+            if suffix and max_res:
+                if isinstance(max_res, int):
+                    suffix_to_max_res[suffix] = max_res
+                elif isinstance(max_res, dict):
+                    # 兼容旧格式
+                    suffix_to_max_res[suffix] = max(max_res.get("width", 0), max_res.get("height", 0))
+        # bindings: suffix → property_name；反转为 property_name → suffix
+        prop_to_suffix: dict[str, str] = {}
+        for suffix, prop_name in bindings.items():
+            # 去掉 .R/.G/.B/.A 通道后缀
+            base_prop = prop_name.split(".")[0]
+            prop_to_suffix[base_prop] = suffix
         for tex in mat.get("textures", []):
             tex_name = tex.get("texture_name", "")
             tex_path = tex.get("texture_path", "")
             if tex_name and tex_path:
                 name_to_path[tex_name] = tex_path
+            # 查找 max_texture_size
+            prop_name = tex.get("texture_property_name", "")
+            suffix = prop_to_suffix.get(prop_name, "")
+            max_res = suffix_to_max_res.get(suffix)
+            if max_res and tex_name:
+                name_to_max_size[tex_name] = max_res
 
     result = []
     for file_path in exported_files:
@@ -642,9 +708,13 @@ def build_roundtrip_refresh_list(
         folder_end = ue_path.rfind("/")
         ue_folder = ue_path[:folder_end] if folder_end > 0 else ue_path
 
-        result.append({
+        item = {
             "local_path": normalized,
             "ue_folder": ue_folder,
             "ue_name": file_name,
-        })
+        }
+        max_size = name_to_max_size.get(file_name)
+        if max_size:
+            item["max_texture_size"] = max_size
+        result.append(item)
     return result

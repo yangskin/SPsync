@@ -104,6 +104,12 @@ def refresh_textures(params_json):
         current_texture.set_editor_property("srgb", srgb)
         current_texture.set_editor_property("compression_settings", compression_settings)
         current_texture.set_editor_property("lod_group", lod_group)
+
+        # 应用 max_texture_size（若配置了）
+        max_tex_size = item.get("max_texture_size")
+        if max_tex_size and isinstance(max_tex_size, int) and max_tex_size > 0:
+            current_texture.set_editor_property("max_texture_size", max_tex_size)
+
         refreshed.append(ue_asset_path)
 
     unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).editor_invalidate_viewports()
