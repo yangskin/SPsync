@@ -175,31 +175,92 @@ class ue_sync_remote(QtCore.QObject):
 class ue_sync_camera(QtCore.QObject):
     sync_error = QtCore.Signal(str)
 
-    def __init__(self, ue_sync_remote_instance:ue_sync_remote):
+    def __init__(self, ue_sync_remote_instance: ue_sync_remote):
         super().__init__()
         self._ue_sync_remote = ue_sync_remote_instance
         self.thread_loop_type = threading.Event()
         self.model_scale = 1.0
         self.force_front_x_axis = True
+        # 最新帧槽位：相机循环写入，worker 读取
+        self._pending_code = None          # type: str | None
+        self._pending_lock = threading.Lock()
+        self._pending_event = threading.Event()
+
+    # ── 生产端：相机采样循环 ──────────────────────────
 
     def update(self):
         while not self.thread_loop_type.is_set():
-            camera:substance_painter.display.Camera = None
+            camera: substance_painter.display.Camera = None
 
-            try: 
+            try:
                 camera = substance_painter.display.Camera.get_default_camera()
-            except:
+            except Exception:
                 pass
-            
-            if camera != None:
+
+            if camera is not None:
                 pos = camera.position
                 rot = camera.rotation
-                code:str = "".join( 
-                    ["sync_camera(" , str(pos[0]) , "," , str(pos[1]) , "," , str(pos[2]) , "," , str(rot[0]) , "," , str(rot[1]) , "," , str(rot[2]) , "," , str(camera.field_of_view) ,  ",", str(self.model_scale),  ",", str(self.force_front_x_axis), ")"]
-                    )
-                self._ue_sync_remote.add_command(ue_sync_command(code, lambda: self.sync_error.emit("sync_error")))
-                
-                time.sleep(0.033333)
+                code: str = "".join(
+                    ["sync_camera(", str(pos[0]), ",", str(pos[1]), ",", str(pos[2]), ",",
+                     str(rot[0]), ",", str(rot[1]), ",", str(rot[2]), ",",
+                     str(camera.field_of_view), ",", str(self.model_scale), ",",
+                     str(self.force_front_x_axis), ")"]
+                )
+                # 覆盖式写入：只保留最新帧
+                with self._pending_lock:
+                    self._pending_code = code
+                self._pending_event.set()
+
+            time.sleep(0.033333)
+
+    # ── 消费端：通过共享连接发送，带背压 ────────────────
+
+    def worker(self):
+        """从最新帧槽位取数据并通过共享连接发送到 UE。
+        
+        背压机制：每次只投递 1 条命令到队列，等它执行完再取下一帧，
+        因此队列中最多只有 1 条相机命令，不会积压。
+        """
+        while not self.thread_loop_type.is_set():
+            # 等待新帧或停止信号
+            self._pending_event.wait(timeout=0.5)
+            self._pending_event.clear()
+
+            # 取出最新帧（原子交换为 None）
+            with self._pending_lock:
+                code = self._pending_code
+                self._pending_code = None
+
+            if code is None:
+                continue
+
+            # 背压：用 Event 等待本条命令执行完成
+            cmd_done = threading.Event()
+            has_error = [False]
+
+            def on_complete(result=None):
+                cmd_done.set()
+
+            def on_error():
+                has_error[0] = True
+                cmd_done.set()
+
+            self._ue_sync_remote.add_command(
+                ue_sync_command(code, on_error, on_complete, remote_execution.MODE_EXEC_FILE)
+            )
+
+            # 等待命令完成（5s 超时兜底 success=False 未触发回调的情况）
+            cmd_done.wait(timeout=5)
+
+            if has_error[0]:
+                self.sync_error.emit("sync_error")
+                break
+
+    def clear_pending(self):
+        """清空待发帧，确保关闭时不再发送过时数据。"""
+        with self._pending_lock:
+            self._pending_code = None
+        self._pending_event.clear()
 
 class ue_sync(QtCore.QObject):
 
@@ -221,6 +282,7 @@ class ue_sync(QtCore.QObject):
         
         self._ue_sync_camera = ue_sync_camera(self._ue_sync_remote)
         self._ue_sync_camera.sync_error.connect(self.ue_sync_camera_error)
+        self._ue_sync_camera_worker_thread = None
         
         self.sync_error.connect(self.ue_sync_textures_error)
 
@@ -362,11 +424,25 @@ class ue_sync(QtCore.QObject):
                                                          remote_execution.MODE_EVAL_STATEMENT))
 
     def close_ue_sync_camera(self):
+        # 1. 停止相机采样循环
         self._ue_sync_camera.thread_loop_type.set()
-        self._ue_sync_remote.add_command(ue_sync_command("exit_sync_camera()", 
-                                                         lambda: self.sync_error.emit("sync_error"), 
-                                                         None, 
-                                                         remote_execution.MODE_EVAL_STATEMENT))
+        # 2. 清空待发帧，防止 worker 继续发送过时数据
+        self._ue_sync_camera.clear_pending()
+        # 唤醒 worker 使其检测到停止信号并退出
+        self._ue_sync_camera._pending_event.set()
+        # 3. 等待两个线程退出
+        if self._ue_sync_camera_thread is not None:
+            self._ue_sync_camera_thread.join(timeout=2)
+            self._ue_sync_camera_thread = None
+        if self._ue_sync_camera_worker_thread is not None:
+            self._ue_sync_camera_worker_thread.join(timeout=2)
+            self._ue_sync_camera_worker_thread = None
+        # 4. 通过共享连接发送 exit 命令（线程已停止，队列不会再有相机命令）
+        self._ue_sync_remote.add_command(ue_sync_command(
+            "exit_sync_camera()",
+            lambda: self.sync_error.emit("sync_error"),
+            None,
+            remote_execution.MODE_EVAL_STATEMENT))
         self._ui.sync_view.setChecked(False)
 
     def ue_sync_camera_error(self, message:str):
@@ -375,15 +451,29 @@ class ue_sync(QtCore.QObject):
         self._show_help_window()
 
     def sync_ue_camera_init(self):
-        if self._ue_sync_camera_thread != None:
+        # 如果已有运行中的相机同步，先停止
+        if self._ue_sync_camera_thread is not None:
             self._ue_sync_camera.thread_loop_type.set()
-            self._ue_sync_camera_thread.join()
+            self._ue_sync_camera.clear_pending()
+            self._ue_sync_camera._pending_event.set()
+            self._ue_sync_camera_thread.join(timeout=2)
+            self._ue_sync_camera_thread = None
+        if self._ue_sync_camera_worker_thread is not None:
+            self._ue_sync_camera_worker_thread.join(timeout=2)
+            self._ue_sync_camera_worker_thread = None
 
         self._ue_sync_camera.thread_loop_type.clear()
+        self._ue_sync_camera.clear_pending()
 
+        # 通过共享连接注入 bootstrap 并初始化相机
         self._ensure_bootstrap()
-        self._ue_sync_remote.add_command(ue_sync_command("init_sync_camera()", lambda: self.sync_error.emit("sync_error")))
-        
+        self._ue_sync_remote.add_command(ue_sync_command(
+            "init_sync_camera()",
+            lambda: self.sync_error.emit("sync_error")))
+
+        # 启动采样线程（生产端）和 worker 线程（消费端）
         self._ue_sync_camera_thread = threading.Thread(target=self._ue_sync_camera.update, daemon=True)
         self._ue_sync_camera_thread.start()
+        self._ue_sync_camera_worker_thread = threading.Thread(target=self._ue_sync_camera.worker, daemon=True)
+        self._ue_sync_camera_worker_thread.start()
            
