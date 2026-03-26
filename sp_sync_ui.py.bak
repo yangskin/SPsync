@@ -2,7 +2,7 @@
 
 ################################################################################
 ## Form generated from reading UI file 'sp_sync_ui.ui'
-## Manually optimized for better UX layout
+## (Manually optimized for better UX layout)
 ##
 ## Created by: Qt User Interface Compiler version 6.8.1
 ################################################################################
@@ -28,7 +28,7 @@ class Ui_SPsync(object):
         SPsync.resize(380, 620)
         self.gridLayout_2 = QGridLayout(SPsync)
         self.gridLayout_2.setObjectName(u"gridLayout_2")
-
+        
         self.tabWidget = QTabWidget(SPsync)
         self.tabWidget.setObjectName(u"tabWidget")
         self.tabWidget.setEnabled(True)
@@ -37,8 +37,8 @@ class Ui_SPsync(object):
         self.tabWidget.setTabsClosable(False)
         self.tabWidget.setMovable(True)
         self.tabWidget.setTabBarAutoHide(False)
-
-        # ── Unreal Tab ──
+        
+        # --- Unreal Tab ---
         self.unreal = QWidget()
         self.unreal.setObjectName(u"unreal")
         self.unreal.setEnabled(True)
@@ -50,12 +50,10 @@ class Ui_SPsync(object):
         self.verticalLayout_2 = QVBoxLayout(self.unreal)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
 
-        # ── 1. Export Settings ──
+        # 1. Export Settings Group
         self.groupBox_export = QGroupBox(self.unreal)
         self.groupBox_export.setObjectName(u"groupBox_export")
         self.verticalLayout_export = QVBoxLayout(self.groupBox_export)
-        self.verticalLayout_export.setSpacing(5)
-        self.verticalLayout_export.setContentsMargins(5, 5, 5, 5)
 
         self.label = QLabel(self.groupBox_export)
         self.label.setObjectName(u"label")
@@ -69,6 +67,7 @@ class Ui_SPsync(object):
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.file_path = QLineEdit(self.groupBox_export)
         self.file_path.setObjectName(u"file_path")
+        self.file_path.setPlaceholderText(u"Choose Unreal Project Content Path...")
         self.horizontalLayout.addWidget(self.file_path)
 
         self.file_select = QPushButton(self.groupBox_export)
@@ -83,12 +82,10 @@ class Ui_SPsync(object):
 
         self.verticalLayout_2.addWidget(self.groupBox_export)
 
-        # ── 2. Sync Options ──
+        # 2. Sync Options Group
         self.groupBox_sync = QGroupBox(self.unreal)
         self.groupBox_sync.setObjectName(u"groupBox_sync")
         self.verticalLayout_sync = QVBoxLayout(self.groupBox_sync)
-        self.verticalLayout_sync.setSpacing(5)
-        self.verticalLayout_sync.setContentsMargins(5, 5, 5, 5)
 
         self.create_material = QCheckBox(self.groupBox_sync)
         self.create_material.setObjectName(u"create_material")
@@ -111,26 +108,21 @@ class Ui_SPsync(object):
         self.mesh_scale.setSingleStep(0.100000000000000)
         self.mesh_scale.setValue(100.000000000000000)
         self.horizontalLayout_scale.addWidget(self.mesh_scale)
-
+        
         self.spacer_scale = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.horizontalLayout_scale.addItem(self.spacer_scale)
         self.verticalLayout_sync.addLayout(self.horizontalLayout_scale)
 
         self.verticalLayout_2.addWidget(self.groupBox_sync)
 
-        # ── 3. View Control ──
+        # 3. View Control Group
         self.groupBox_view = QGroupBox(self.unreal)
         self.groupBox_view.setObjectName(u"groupBox_view")
         self.verticalLayout_view = QVBoxLayout(self.groupBox_view)
-        self.verticalLayout_view.setSpacing(5)
-        self.verticalLayout_view.setContentsMargins(5, 5, 5, 5)
 
         self.sync_view = QToolButton(self.groupBox_view)
         self.sync_view.setObjectName(u"sync_view")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.sync_view.sizePolicy().hasHeightForWidth())
         self.sync_view.setSizePolicy(sizePolicy1)
         self.sync_view.setMinimumSize(QSize(0, 40))
         self.sync_view.setCheckable(True)
@@ -139,11 +131,11 @@ class Ui_SPsync(object):
 
         self.verticalLayout_2.addWidget(self.groupBox_view)
 
-        # Spacer pushes action buttons to the bottom
-        self.verticalSpacer_2 = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        # Flexible Spacer to push buttons to the bottom
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         self.verticalLayout_2.addItem(self.verticalSpacer_2)
 
-        # ── 4. Action Buttons (pinned to bottom) ──
+        # 4. Action Buttons (Bottom)
         self.sync_mesh_button = QPushButton(self.unreal)
         self.sync_mesh_button.setObjectName(u"sync_mesh_button")
         self.verticalLayout_2.addWidget(self.sync_mesh_button)
@@ -154,20 +146,15 @@ class Ui_SPsync(object):
         font = QFont()
         font.setBold(True)
         self.sync_button.setFont(font)
-        self.sync_button.setStyleSheet(
-            u"QPushButton { background-color: #2F6B31; color: white;"
-            u" font-weight: bold; border-radius: 4px; }"
-            u" QPushButton:hover { background-color: #3A8A3E; }"
-            u" QPushButton:pressed { background-color: #245424; }"
-        )
+        # We will set a custom style sheet in python
+        self.sync_button.setStyleSheet(u"background-color: #2F6B31; color: white; font-weight: bold; border-radius: 4px;") 
         self.verticalLayout_2.addWidget(self.sync_button)
 
         self.tabWidget.addTab(self.unreal, "")
 
-        # ── Help Tab ──
+        # --- Help Tab ---
         self.Help = QWidget()
         self.Help.setObjectName(u"Help")
-        sizePolicy.setHeightForWidth(self.Help.sizePolicy().hasHeightForWidth())
         self.Help.setSizePolicy(sizePolicy)
         self.verticalLayout = QVBoxLayout(self.Help)
         self.verticalLayout.setObjectName(u"verticalLayout")
@@ -194,35 +181,34 @@ class Ui_SPsync(object):
 
     def retranslateUi(self, SPsync):
         SPsync.setWindowTitle(QCoreApplication.translate("SPsync", u"SPsync 0.964", None))
-
+        
         self.groupBox_export.setTitle(QCoreApplication.translate("SPsync", u"Export Settings", None))
         self.groupBox_sync.setTitle(QCoreApplication.translate("SPsync", u"Sync Options", None))
         self.groupBox_view.setTitle(QCoreApplication.translate("SPsync", u"View Control", None))
 
         self.label.setText(QCoreApplication.translate("SPsync", u"Export Preset:", None))
-        self.file_path.setPlaceholderText(QCoreApplication.translate("SPsync", u"Choose Unreal Project Content Path...", None))
         self.file_select.setText(QCoreApplication.translate("SPsync", u"Browse...", None))
         self.auto_sync.setText(QCoreApplication.translate("SPsync", u"Auto Export Texture", None))
-
+        
         self.create_material.setText(QCoreApplication.translate("SPsync", u"Create Materials", None))
-        self.force_front_x_axis.setText(QCoreApplication.translate("SPsync", u"Force front X axis", None))
         self.label_2.setText(QCoreApplication.translate("SPsync", u"Scale:", None))
-
+        self.force_front_x_axis.setText(QCoreApplication.translate("SPsync", u"Force front X axis", None))
+        
         self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))
-
+        
         self.sync_mesh_button.setText(QCoreApplication.translate("SPsync", u"SYNC (Mesh Only)", None))
         self.sync_button.setText(QCoreApplication.translate("SPsync", u"SYNC", None))
-
+        
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.unreal), QCoreApplication.translate("SPsync", u"Unreal", None))
         self.help_video.setText(QCoreApplication.translate("SPsync", u"Video Tutorial", None))
-        self.textBrowser.setHtml(QCoreApplication.translate("SPsync", u"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"hr { height: 1px; border-width: 0; }\n"
-"li.unchecked::marker { content: \"\\2610\"; }\n"
-"li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:'Microsoft YaHei UI'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'SimSun'; font-size:7pt;\">Email    : yangskin@163.com</span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'SimSun'; font-size:7pt;\">BiliBili : https://space.bilibili.com/249466</span></p></body></html>", None))
+        self.textBrowser.setHtml(QCoreApplication.translate("SPsync", u"""""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html><head><meta name="qrichtext" content="1" /><meta charset="utf-8" /><style type="text/css">
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: "\2610"; }
+li.checked::marker { content: "\2612"; }
+</style></head><body style=" font-family:'Microsoft YaHei UI'; font-size:9pt; font-weight:400; font-style:normal;">
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:'SimSun'; font-size:7pt;">Email    : yangskin@163.com</span></p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style=" font-family:'SimSun'; font-size:7pt;">BiliBili : https://space.bilibili.com/249466</span></p></body></html>""""", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Help), QCoreApplication.translate("SPsync", u"Help", None))
     # retranslateUi
