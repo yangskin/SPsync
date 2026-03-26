@@ -47,13 +47,13 @@ class ImageDialog(QtWidgets.QDialog):
         layout.addWidget(self.image_label)
 
         button = QtWidgets.QPushButton("Yes", self)
-        button.clicked.connect(self._colse)
+        button.clicked.connect(self._close)
         layout.addWidget(button)
 
         self.setLayout(layout)
         self.setFixedSize(425, 760)
 
-    def _colse(self):
+    def _close(self):
         self.close()
 
 class ue_sync_command():
@@ -272,6 +272,7 @@ class ue_sync(QtCore.QObject):
         self._main_widget = main_widget
         self._root_path = os.path.dirname(__file__)
         self._bootstrap_injected = False
+        self._bootstrap_lock = threading.Lock()
         self._udim_type = False
         self._mesh_scale = 1.0
         self._force_front_x_axis = True
@@ -316,17 +317,19 @@ class ue_sync(QtCore.QObject):
 
     def _ensure_bootstrap(self):
         """确保 UE 侧函数已注入。连接后一次性发送所有脚本定义。"""
-        if not self._bootstrap_injected:
-            self._ue_sync_remote.add_command(
-                ue_sync_command(
-                    code=self._ue_bootstrap_code,
-                    error_fun=lambda: self.sync_error.emit("sync_error"),
-                    call_back_fun=self._on_bootstrap_done,
-                    model=remote_execution.MODE_EXEC_FILE
-                ))
+        with self._bootstrap_lock:
+            if not self._bootstrap_injected:
+                self._ue_sync_remote.add_command(
+                    ue_sync_command(
+                        code=self._ue_bootstrap_code,
+                        error_fun=lambda: self.sync_error.emit("sync_error"),
+                        call_back_fun=self._on_bootstrap_done,
+                        model=remote_execution.MODE_EXEC_FILE
+                    ))
 
     def _on_bootstrap_done(self, result):
-        self._bootstrap_injected = True
+        with self._bootstrap_lock:
+            self._bootstrap_injected = True
 
     def set_udim_type(self, udim_type:bool):
         self._udim_type = udim_type
@@ -401,7 +404,8 @@ class ue_sync(QtCore.QObject):
                                                          remote_execution.MODE_EVAL_STATEMENT))
 
     def ue_sync_textures_error(self):
-        self._bootstrap_injected = False
+        with self._bootstrap_lock:
+            self._bootstrap_injected = False
         self._ui.sync_button.setEnabled(True)
         self._ui.sync_mesh_button.setEnabled(True)
         self._show_help_window() 
@@ -446,7 +450,8 @@ class ue_sync(QtCore.QObject):
         self._ui.sync_view.setChecked(False)
 
     def ue_sync_camera_error(self, message:str):
-        self._bootstrap_injected = False
+        with self._bootstrap_lock:
+            self._bootstrap_injected = False
         self.close_ue_sync_camera()
         self._show_help_window()
 

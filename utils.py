@@ -51,10 +51,11 @@ def content_path_to_game_path(file_path: str) -> str:
     >>> content_path_to_game_path("D:/MyProject/Content/Textures/Wood")
     '/Game/Textures/Wood'
     """
-    content_index = file_path.find("Content")
+    # 使用 rfind 匹配最后一个 Content 目录，避免路径中有多个 Content 时误匹配
+    content_index = file_path.rfind("Content")
     if content_index == -1:
         return file_path
-    return "/" + file_path[content_index:].replace("Content", "Game")
+    return "/" + file_path[content_index:].replace("Content", "Game", 1)
 
 
 def build_texture_name(mesh_name: str, material_name: str, suffix: str) -> str:

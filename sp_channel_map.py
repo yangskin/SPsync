@@ -103,6 +103,8 @@ def map_ue_to_sp(ue_param_name: str) -> str:
             if key.lower() == stripped_lower:
                 return value
 
+    import warnings
+    warnings.warn(f"[SPsync] Unknown UE param '{ue_param_name}', falling back to '{DEFAULT_CHANNEL}'", stacklevel=2)
     return DEFAULT_CHANNEL
 
 

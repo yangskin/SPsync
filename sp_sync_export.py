@@ -70,7 +70,10 @@ class SPSyncExport:
 
     def clean_temp_folder(self):
         if os.path.exists(self._temp_path):
-            shutil.rmtree(self._temp_path)
+            try:
+                shutil.rmtree(self._temp_path)
+            except OSError as e:
+                print(f"[SPsync] Warning: failed to clean temp folder {self._temp_path}: {e}")
 
     def export_all_set(self):
         self._current_set_names = []

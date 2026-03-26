@@ -46,6 +46,10 @@ def import_textures(params_json):
             data.set_editor_property("replace_existing", True)
             asset_tools.import_assets_automated(data)
 
+            # Reload asset after reimport to get fresh reference
+            current_texture = asset_library.load_asset(file_path)
+            if current_texture is None:
+                continue
             current_texture.set_editor_property("srgb", srgb)
             current_texture.set_editor_property("compression_settings", compression_settings)
             current_texture.set_editor_property("lod_group", lod_group)
@@ -101,6 +105,10 @@ def refresh_textures(params_json):
         data.set_editor_property("replace_existing", True)
         asset_tools.import_assets_automated(data)
 
+        # Reload asset after reimport to get fresh reference
+        current_texture = asset_library.load_asset(ue_asset_path)
+        if current_texture is None:
+            continue
         current_texture.set_editor_property("srgb", srgb)
         current_texture.set_editor_property("compression_settings", compression_settings)
         current_texture.set_editor_property("lod_group", lod_group)

@@ -452,6 +452,8 @@ def receive_from_ue(json_str: str, mesh_path: str) -> None:
         print(f'[SPsync]   材质[{i}] slot={slot_name or "?"}  name={mat_name}  textures={tex_count}  profile={mi_profile or "(继承SM)"}  bindings={"有" if mi_has_bindings else "(继承SM)"}')
 
     # 暂存数据，等项目就绪后由回调处理
+    if _pending_ue_data is not None:
+        print('[SPsync] Warning: overwriting pending UE data — previous data was not yet processed')
     _pending_ue_data = data
 
     # 注册回调：ProjectEditionEntered 在项目完全可编辑时触发（texture set 已就绪）
