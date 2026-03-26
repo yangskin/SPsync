@@ -255,9 +255,17 @@ def build_export_config(
     except ImportError:
         from sp_channel_map import get_export_suffix
 
+    # 使用 virtualMap 自动合并烘焙贴图的通道
+    # AO_Mixed: SP 内置 "Unreal Engine (Packed)" 预设验证可用
+    _virtual_map = {
+        "Normal": "Normal_DirectX",
+        "AO": "AO_Mixed",
+    }
+
     maps = []
     for ch in channels:
         suffix = get_export_suffix(ch)
+        vm = _virtual_map.get(ch)
         if ch == "Normal":
             # Normal 使用 virtualMap 获取最终法线
             ch_list = [
@@ -272,6 +280,14 @@ def build_export_config(
                  "srcMapType": "documentMap", "srcMapName": _sp_src_map_name(ch)}
                 for c in ("R", "G", "B")
             ]
+        elif vm:
+            # AO 使用 virtualMap 合并烘焙贴图（匹配 SP 内置预设：srcChannel="L"）
+            ch_list = [{
+                "destChannel": "L",
+                "srcChannel": "L",
+                "srcMapType": "virtualMap",
+                "srcMapName": vm,
+            }]
         else:
             # 灰度通道
             ch_list = [
@@ -390,6 +406,17 @@ def _compute_default_resolution(data: dict) -> int | None:
     return max(min(max_val, _SP_MAX_RES), _SP_MIN_RES)
 
 
+_from_ue_pending: bool = False
+_created_from_ue_session: bool = False
+
+
+def reset_ue_session():
+    """重置会话级 UE 标记。在项目关闭时调用。"""
+    global _created_from_ue_session, _from_ue_pending
+    _created_from_ue_session = False
+    _from_ue_pending = False
+
+
 def receive_from_ue(json_str: str, mesh_path: str) -> None:
     """从 UE 接收数据并在 SP 中执行完整的项目创建流程。
 
@@ -401,9 +428,11 @@ def receive_from_ue(json_str: str, mesh_path: str) -> None:
         json_str: UE 发送的材质信息 JSON。
         mesh_path: FBX 文件绝对路径。
     """
-    global _pending_ue_data
+    global _pending_ue_data, _from_ue_pending, _created_from_ue_session
     import substance_painter.project as project
     import substance_painter.event
+
+    _created_from_ue_session = True
 
     # 解析数据
     data = parse_ue_data(json_str)
@@ -432,6 +461,8 @@ def receive_from_ue(json_str: str, mesh_path: str) -> None:
     )
     print('[SPsync] 已注册 ProjectEditionEntered 回调')
 
+    _from_ue_pending = True
+
     # ⑤ 创建 SP 项目（异步，立即返回）
     # 从 texture_definitions 中提取最大分辨率用于项目默认设置
     default_res = _compute_default_resolution(data)
@@ -456,8 +487,9 @@ def _on_project_ready(state) -> None:
       Phase 1 — 批量导入：集中所有贴图 import_project_resource()（全局去重）
       Phase 2 — 批量创建图层：从缓存取资源引用，零 I/O 创建 Fill Layer
     """
-    global _pending_ue_data
+    global _pending_ue_data, _from_ue_pending
     import substance_painter.event
+    import substance_painter.project
     import substance_painter.resource as resource
     import substance_painter.textureset as textureset
     import substance_painter.layerstack as layerstack
@@ -467,6 +499,10 @@ def _on_project_ready(state) -> None:
         substance_painter.event.ProjectEditionEntered,
         _on_project_ready,
     )
+
+    # 持久化 from_ue 标记到项目 metadata
+    substance_painter.project.Metadata("sp_sync").set("from_ue", True)
+    _from_ue_pending = False
 
     if _pending_ue_data is None:
         print('[SPsync] _on_project_ready: 无待处理数据')

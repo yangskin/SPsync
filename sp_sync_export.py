@@ -275,6 +275,10 @@ class SPSyncExport:
                 print(f'[SPsync] Round-Trip exportList: {self._current_set_names}')
             maps_count = len(export_config.get('exportPresets', [{}])[0].get('maps', []))
             print(f'[SPsync] Round-Trip 导出配置: {maps_count} 个 maps → {self._temp_path}')
+            # DEBUG: 打印完整导出配置供诊断
+            import json as _json
+            for i, m in enumerate(export_config.get('exportPresets', [{}])[0].get('maps', [])):
+                print(f'[SPsync] DEBUG map[{i}]: {_json.dumps(m, ensure_ascii=False)}')
             self.on_layerstack_changed(None)
             try:
                 substance_painter.export.export_project_textures(export_config)

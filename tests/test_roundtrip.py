@@ -173,10 +173,15 @@ class TestBuildRoundtripExportMaps:
         assert len(mro["channels"]) == 3
         dest_channels = {ch["destChannel"] for ch in mro["channels"]}
         assert dest_channels == {"R", "G", "B"}
-        # 灰度源 srcChannel 应为 "L"，srcMapName 小写
-        assert all(ch["srcChannel"] == "L" for ch in mro["channels"])
+        # documentMap 灰度源 srcChannel 为 "L"，virtualMap 源为 "R"
+        doc_chs = [ch for ch in mro["channels"] if ch["srcMapType"] == "documentMap"]
+        assert all(ch["srcChannel"] == "L" for ch in doc_chs)
         names = {ch["srcMapName"] for ch in mro["channels"]}
-        assert names == {"metallic", "roughness", "ambientOcclusion"}
+        # AO 使用 virtualMap:AO_Mixed（匹配 SP 内置预设），其余仍为 documentMap
+        assert names == {"metallic", "roughness", "AO_Mixed"}
+        ao_ch = [ch for ch in mro["channels"] if ch["srcMapName"] == "AO_Mixed"]
+        assert ao_ch[0]["srcMapType"] == "virtualMap"
+        assert ao_ch[0]["srcChannel"] == "L"
 
     def test_color_channel_rgb(self):
         mat = UE_DATA_FULL["materials"][0]
@@ -211,7 +216,7 @@ class TestBuildRoundtripExportMaps:
         assert build_roundtrip_export_maps(mat) == []
 
     def test_simple_grayscale(self):
-        """单独灰度通道（非打包）。"""
+        """单独灰度通道（非打包）— Height 无可靠 virtualMap，走 documentMap。"""
         mat = {
             "parameter_bindings": {"H": "Height_Texture"},
             "textures": [{"texture_property_name": "Height_Texture", "texture_name": "T_Height", "texture_path": "/Game/T"}],
@@ -219,10 +224,12 @@ class TestBuildRoundtripExportMaps:
         maps = build_roundtrip_export_maps(mat)
         assert len(maps) == 1
         assert maps[0]["fileName"] == "T_Height"
+        # Height 无 virtualMap，使用 documentMap + destChannel="L"
         assert len(maps[0]["channels"]) == 1
         ch = maps[0]["channels"][0]
         assert ch["destChannel"] == "L"
         assert ch["srcChannel"] == "L"
+        assert ch["srcMapType"] == "documentMap"
         assert ch["srcMapName"] == "height"
 
 

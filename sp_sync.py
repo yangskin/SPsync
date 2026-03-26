@@ -76,6 +76,10 @@ class sp_sync:
             self._sp_sync_ue.sync_ue_camera_init()
 
     def _project_about_to_close_event(self, state):
+        from . import sp_receive
+        sp_receive.reset_ue_session()
+        self._ui.sync_mesh_button.setVisible(True)
+
         self._export.on_project_close()
         self._ui.tabWidget.setEnabled(False)
         self._ui.file_path.setText("")

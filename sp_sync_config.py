@@ -24,20 +24,41 @@ class SPSyncConfig:
         metadata.set("current_preset", ui.select_preset.currentText())
         metadata.set("mesh_scale", ui.mesh_scale.value())
         metadata.set("create_material", ui.create_material.isChecked())
+        metadata.set("force_front_x_axis", ui.force_front_x_axis.isChecked())
 
     def load(self, ui, sp_sync_ue):
         """从 SP 项目元数据读取配置，应用到 UI 和 ue_sync。返回 True 表示加载成功。"""
+        from . import sp_receive
+
         metadata = substance_painter.project.Metadata("sp_sync")
         ui.file_path.setText(metadata.get("export_path"))
         self._origin_export_path = metadata.get("origin_export_path")
         key_list = metadata.list()
 
+        # UE 来源项目：通过 pending flag（新建）或 metadata（重新打开）检测
+        from_ue = sp_receive._from_ue_pending or (
+            "from_ue" in key_list and metadata.get("from_ue")
+        )
+
         if "mesh_scale" in key_list:
             ui.mesh_scale.setValue(metadata.get("mesh_scale"))
             sp_sync_ue.set_mesh_scale(metadata.get("mesh_scale"))
         else:
-            ui.mesh_scale.setValue(100)
-            sp_sync_ue.set_mesh_scale(100)
+            default_scale = 1.0 if from_ue else 100.0
+            ui.mesh_scale.setValue(default_scale)
+            sp_sync_ue.set_mesh_scale(default_scale)
+
+        if "force_front_x_axis" in key_list:
+            val = metadata.get("force_front_x_axis")
+            ui.force_front_x_axis.setChecked(val)
+            sp_sync_ue.set_force_front_x_axis(val)
+        else:
+            default_ffa = not from_ue
+            ui.force_front_x_axis.setChecked(default_ffa)
+            sp_sync_ue.set_force_front_x_axis(default_ffa)
+
+        # UE→SP 会话：隐藏 Sync Mesh 按钮；其他情况显示
+        ui.sync_mesh_button.setVisible(not sp_receive._created_from_ue_session)
 
         if "create_material" in key_list:
             ui.create_material.setChecked(metadata.get("create_material"))

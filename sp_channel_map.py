@@ -360,7 +360,15 @@ _SP_SRC_MAP_NAME: dict[str, str] = {
     "Opacity": "opacity",
     "Height": "height",
     "Specular": "specular",
-    # Normal 用 virtualMap + "Normal_DirectX"，不走此映射
+    # Normal / AO / Height 优先走 virtualMap，见 _VIRTUAL_MAP_CHANNELS
+}
+
+# 使用 virtualMap 自动合并烘焙贴图的通道
+# AO_Mixed: SP 内置 "Unreal Engine (Packed)" 预设验证可用
+# Height: 无可靠 virtualMap（Mixed_Height 不在 Converted maps 中），使用 documentMap
+_VIRTUAL_MAP_CHANNELS: dict[str, str] = {
+    "Normal": "Normal_DirectX",
+    "AO": "AO_Mixed",
 }
 
 # 颜色通道（RGB 三分量输出）
@@ -490,12 +498,21 @@ def build_roundtrip_export_maps(
                     sp_channel = _SUFFIX_TO_SP_CHANNEL.get(suffix_key.upper())
                 if not sp_channel:
                     continue
-                channels.append({
-                    "destChannel": suffix_char,
-                    "srcChannel": "L",
-                    "srcMapType": "documentMap",
-                    "srcMapName": _SP_SRC_MAP_NAME.get(sp_channel, sp_channel.lower()),
-                })
+                vm = _VIRTUAL_MAP_CHANNELS.get(sp_channel)
+                if vm:
+                    channels.append({
+                        "destChannel": suffix_char,
+                        "srcChannel": "L",
+                        "srcMapType": "virtualMap",
+                        "srcMapName": vm,
+                    })
+                else:
+                    channels.append({
+                        "destChannel": suffix_char,
+                        "srcChannel": "L",
+                        "srcMapType": "documentMap",
+                        "srcMapName": _SP_SRC_MAP_NAME.get(sp_channel, sp_channel.lower()),
+                    })
             if channels:
                 maps.append({"fileName": tex_name, "channels": channels})
         else:
@@ -503,6 +520,7 @@ def build_roundtrip_export_maps(
                 sp_channel = _SUFFIX_TO_SP_CHANNEL.get(suffix_key.upper())
                 if not sp_channel:
                     continue
+                vm = _VIRTUAL_MAP_CHANNELS.get(sp_channel)
                 if sp_channel == "Normal":
                     channels = [
                         {"destChannel": c, "srcChannel": c,
@@ -517,6 +535,14 @@ def build_roundtrip_export_maps(
                          "srcMapName": _SP_SRC_MAP_NAME.get(sp_channel, sp_channel.lower())}
                         for c in ("R", "G", "B")
                     ]
+                elif vm:
+                    # AO 使用 virtualMap 合并烘焙贴图（匹配 SP 内置预设：srcChannel="L"）
+                    channels = [{
+                        "destChannel": "L",
+                        "srcChannel": "L",
+                        "srcMapType": "virtualMap",
+                        "srcMapName": vm,
+                    }]
                 else:
                     channels = [{
                         "destChannel": "L",

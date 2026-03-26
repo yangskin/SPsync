@@ -70,42 +70,71 @@ class ue_sync_command():
     
 class ue_sync_remote(QtCore.QObject):
 
-    _timeout: float = 0.06
+    # 连接健康检测超时（秒）。命令执行超过此时长则认为连接可能不健康，
+    # 下一次命令前会重新建连。设为 30s 以适应贴图导入等耗时操作。
+    _timeout: float = 30.0
+
+    # 重连前等待时间（秒），让 TCP TIME_WAIT 有时间释放
+    _reconnect_delay: float = 2.0
+
+    # 单条命令最大重试次数
+    _max_retries: int = 2
 
     def __init__(self):
         self._command_queue = queue.Queue()
         self._thread = None
         self._lock = threading.Lock()
         self._remote_exec = remote_execution.RemoteExecution()
+        self._need_reconnect = False
+
+    def _ensure_connection(self):
+        """确保有活跃的命令连接，必要时重连。"""
+        if self._need_reconnect:
+            self._need_reconnect = False
+            try:
+                self._remote_exec.stop()
+            except Exception:
+                pass
+            time.sleep(self._reconnect_delay)
+
+        if not self._remote_exec.has_command_connection():
+            self._remote_exec.start()
+            # 等待节点发现（最多 5 秒）
+            for _ in range(50):
+                if self._remote_exec.remote_nodes:
+                    break
+                time.sleep(0.1)
+            if not self._remote_exec.remote_nodes:
+                raise RuntimeError('No UE remote nodes discovered')
+            self._remote_exec.open_command_connection(self._remote_exec.remote_nodes)
 
     def _worker(self):
 
         while True:
             try:
-                if not self._remote_exec.has_command_connection():
-                    self._remote_exec.start()
-                    self._remote_exec.open_command_connection(self._remote_exec.remote_nodes)
+                self._ensure_connection()
 
                 command = self._command_queue.get(True)
                 start_time = time.time()
 
-                try :
+                try:
                     rec = self._remote_exec.run_command(command.code, True, command.model)
                     if rec['success'] == True:
                         if command.call_back_fun != None:
                             command.call_back_fun(rec['result'])
 
                 except Exception as e:
-                    print(e)
+                    print(f'[SPsync] Command failed: {e}')
                     command.error_fun()
-                    self._remote_exec.stop()
+                    # 标记需要重连，但不在此处立即重连（避免端口残留）
+                    self._need_reconnect = True
                     self._command_queue.task_done()
                     continue
                 
-                if time.time() - start_time > self._timeout:
-                    self._remote_exec.stop()
-                    self._remote_exec.start()
-                    self._remote_exec.open_command_connection(self._remote_exec.remote_nodes)
+                elapsed = time.time() - start_time
+                if elapsed > self._timeout:
+                    print(f'[SPsync] Command took {elapsed:.1f}s (> {self._timeout}s), scheduling reconnect')
+                    self._need_reconnect = True
 
                 self._command_queue.task_done()
 
@@ -114,6 +143,20 @@ class ue_sync_remote(QtCore.QObject):
                     if self._command_queue.empty():
                         self._thread = None
                         break
+            except Exception as e:
+                # 连接建立失败时不要死循环，通知错误后退出
+                print(f'[SPsync] Worker connection error: {e}')
+                # 排空队列，通知所有等待的命令
+                while not self._command_queue.empty():
+                    try:
+                        cmd = self._command_queue.get_nowait()
+                        cmd.error_fun()
+                        self._command_queue.task_done()
+                    except queue.Empty:
+                        break
+                with self._lock:
+                    self._thread = None
+                break
 
     def add_command(self, command:ue_sync_command):
         with self._lock:
