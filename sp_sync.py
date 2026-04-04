@@ -13,6 +13,7 @@ else:
     from PySide6 import QtWidgets
 
 from . sp_sync_ue import ue_sync
+from . sp_bake import SPBakeManager
 from . sp_sync_config import SPSyncConfig
 from . sp_sync_export import SPSyncExport
 from . utils import validate_content_path, content_path_to_game_path
@@ -29,6 +30,7 @@ class sp_sync:
 
         self._config = SPSyncConfig()
         self._sp_sync_ue = ue_sync(self._ui, self._main_widget)
+        self._bake = SPBakeManager(self._ui, self._main_widget, self._config)
         self._export = SPSyncExport(self._ui, self._main_widget, self._sp_sync_ue, self._config)
 
         if substance_painter.project.is_open() and (not substance_painter.resource.Shelf("starter_assets").is_crawling()):
@@ -83,6 +85,7 @@ class sp_sync:
         self._export.on_project_close()
         self._ui.tabWidget.setEnabled(False)
         self._ui.file_path.setText("")
+        self._bake.on_project_close()
         self._sp_sync_ue.close_ue_sync_camera()
 
     # ── UI 事件 ───────────────────────────────────────
@@ -91,6 +94,8 @@ class sp_sync:
         if request:
             self._ui.sync_button.setEnabled(True)
             self._ui.sync_mesh_button.setEnabled(True)
+            self._ui.highpoly_select.setEnabled(True)
+            self._ui.bake_highpoly_button.setEnabled(True)
 
     def _select_file_button_click(self):
         if not substance_painter.project.is_open():
@@ -123,6 +128,12 @@ class sp_sync:
     def _create_material_clicked(self):
         self._config.save(self._ui)
 
+    def _select_highpoly_file_click(self):
+        self._bake.select_highpoly_mesh()
+
+    def _bake_highpoly_clicked(self):
+        self._bake.bake_selected_highpoly_maps()
+
     def _config_ui(self):
         self._main_widget = QtWidgets.QWidget()
         self._main_widget.setWindowTitle("sp_sync")
@@ -137,6 +148,8 @@ class sp_sync:
         self._ui.help_video.clicked.connect(self._help_video_click)
         self._ui.force_front_x_axis.clicked.connect(self._force_front_x_axis_changed)
         self._ui.create_material.clicked.connect(self._create_material_clicked)
+        self._ui.highpoly_select.clicked.connect(self._select_highpoly_file_click)
+        self._ui.bake_highpoly_button.clicked.connect(self._bake_highpoly_clicked)
 
         self.plugin_widgets.append(self._main_widget)
         substance_painter.ui.add_dock_widget(self._main_widget)

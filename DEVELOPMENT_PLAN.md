@@ -1,7 +1,7 @@
 # SPsync 开发计划
 
-> 最后更新: 2026-03-26  
-> 当前版本: 0.970 (阶段七已完成)  
+> 最后更新: 2026-04-04  
+> 当前版本: 0.971 (阶段八已完成)  
 > 目标版本: 1.0
 
 ---
@@ -20,10 +20,11 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 |------|------|---------|------|
 | `__init__.py` | 31 | SP | ✅ 稳定 |
 | `sp_sync.py` | ~130 | SP | ✅ 已重构为控制器 |
-| `sp_sync_config.py` | ~60 | SP | ✅ 新增（配置持久化） |
+| `sp_sync_config.py` | ~70 | SP | ✅ 新增（配置持久化 + 高模路径） |
 | `sp_sync_export.py` | ~230 | SP | ✅ 新增（导出编排） |
 | `sp_sync_ui.py` | 248 | SP | ✅ 稳定（自动生成） |
 | `sp_sync_ue.py` | 331 | SP | ⚠️ 待重构（字符串模板注入） |
+| `sp_bake.py` | ~260 | SP | ✅ 新增（高模辅助 Bake） |
 | `remote_execution.py` | 630 | SP | ✅ 稳定（Epic 官方，不改动） |
 | `import_textures_ue.py` | 52 | UE 远程 | ⚠️ 待重构（含占位符模板） |
 | `material_ue.py` | 70 | UE 远程 | ✅ 已是参数化函数 |
@@ -31,7 +32,7 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 | `create_material_and_connect_textures.py` | 97 | UE 远程 | ⚠️ 待重构（含占位符模板） |
 | `import_mesh_ue.py` | 79 | UE 远程 | ⚠️ 待重构（字符串拼接参数） |
 | `sync_camera_ue.py` | 79 | UE 远程 | ✅ 稳定（高频调用，保持直传） |
-| **合计** | **2,122** | | 6 个文件待重构 |
+| **合计** | **~2,400** | | 6 个文件待重构 |
 
 ### 已知技术债
 
@@ -62,6 +63,7 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 | 实时相机同步 | ✅ 正常 | ~30fps |
 | 配置持久化 | ✅ 正常 | SP 项目元数据 |
 | PySide2/6 兼容 | ✅ 正常 | 运行时检测 |
+| 高模辅助 Bake | ✅ 正常 | UI 按键选择高模 FBX + 自动烘焙 Normal/AO/Curvature/Position/Thickness |
 
 ---
 
@@ -177,13 +179,21 @@ SPsync 是 Adobe Substance 3D Painter 插件，通过 Epic 远程执行协议实
 | 16 | View Sync 开启 | 🔲 |
 | 17 | View Sync 关闭 | 🔲 |
 
+### 高模 Bake (3 项)
+
+| # | 测试项 | 通过 |
+|---|--------|------|
+| 18 | Browse 选择高模 FBX + Bake 按钮触发烘焙 | ✅ |
+| 19 | 多 TextureSet 逐个烘焙 + 进度显示 | ✅ |
+| 20 | 高模路径项目级持久化（关闭重开恢复） | ✅ |
+
 ### 异常场景 (3 项)
 
 | # | 测试项 | 通过 |
 |---|--------|------|
-| 18 | UE 未启动时 SYNC | 🔲 |
-| 19 | 路径不含 Content/ | 🔲 |
-| 20 | 非 SPSYNCDefault 预设 + 创建材质 | 🔲 |
+| 21 | UE 未启动时 SYNC | 🔲 |
+| 22 | 路径不含 Content/ | 🔲 |
+| 23 | 非 SPSYNCDefault 预设 + 创建材质 | 🔲 |
 
 ---
 
@@ -353,6 +363,108 @@ UE `blueprint_get_size_x/y()` 返回的是运行时分辨率（受 `max_texture_
 
 ---
 
+## 阶段八：高模辅助 Bake（M10 — High Poly Guided Mesh Map Baking）
+
+- **状态**: ✅ 已完成 (2026-04-04)
+- **风险**: ⭐⭐⭐ 中
+- **前置**: 阶段七完成
+- **目标**: 在 SPsync UI 中新增一个高模 Bake 按键，允许用户指定高模 FBX，并基于该高模自动烘焙 Normal、AO、Curvature、Position、Thickness 等常用 Mesh Maps
+
+### 调研结论
+
+本次直接基于 Substance 3D Painter 本机 Python API 与实际 probe 结果确认：
+
+1. **自动 bake API 原生存在**
+  - 存在 `substance_painter.baking` 模块
+  - 存在 `BakingParameters`、`bake_async()`、`bake_selected_textures_async()`
+  - `ProjectEditionEntered` 后允许进行 bake
+
+2. **高模入口已确认可用**
+  - Common baking parameters 中存在 `HipolyMesh`
+  - label = `High poly scene`
+  - widget = `FileList`
+  - 同时存在 `LowAsHigh`、`HipolySuffix`、`LowpolySuffix`、`CageMesh`、`CageMode`、`FilterMethod`、`SubSampling` 等关键参数
+
+3. **可用的常见 MeshMapUsage 已确认**
+  - `AO`
+  - `BentNormals`
+  - `Curvature`
+  - `Height`
+  - `ID`
+  - `Normal`
+  - `Opacity`
+  - `Position`
+  - `Thickness`
+  - `WorldSpaceNormal`
+
+4. **Normal baker 无独立专属参数**
+  - `Normal` baker 参数为空
+  - 说明法线烘焙主要依赖 common baking parameters，例如 `HipolyMesh`、`LowAsHigh`、`MaxHeight`、`MaxDepth`、`FilterMethod`、`SubSampling`
+
+### 目标交互
+
+在 SPsync 面板增加一个独立流程：
+
+1. 用户点击 **Bake(HighPoly)** 按键
+2. 弹出文件选择对话框，选择高模 FBX
+3. 将高模路径保存到当前 SP 项目元数据 / 插件配置
+4. 自动配置 baking parameters：
+  - `LowAsHigh = False`
+  - `HipolyMesh = [高模 FBX]`
+  - 视需要设置 `CageMode` / `CageMesh`
+5. 启用常用 bakers：
+  - `Normal`
+  - `AO`
+  - `Curvature`
+  - `Position`
+  - `Thickness`
+  - 可选：`WorldSpaceNormal`
+6. 调用 `bake_async()` 执行烘焙
+7. 烘焙完成后，在项目内直接可用于现有导出 / roundtrip 流程
+
+### 实施任务
+
+| 任务 | 状态 | 文件 | 说明 |
+|------|------|------|------|
+| 8A: UI 按键与路径选择 | ✅ | `sp_sync_ui.py`, `sp_sync.py` | 新增 `Bake(HighPoly)` 按键、`Browse...` 按钮与点击事件 |
+| 8B: 高模路径持久化 | ✅ | `sp_sync_config.py` | 保存高模 FBX 路径，项目重开后可恢复 |
+| 8C: Baking 参数封装 | ✅ | `sp_bake.py` | 统一封装 `HipolyMesh` / `LowAsHigh` 等参数，per-TextureSet 配置 |
+| 8D: 常用 bakers 预设 | ✅ | `sp_bake.py` | 默认启用 `Normal/AO/Curvature/Position/Thickness` |
+| 8E: 异步 bake 事件编排 | ✅ | `sp_bake.py`, `sp_sync.py` | 监听 `BakingProcessAboutToStart/Progress/Ended`，逐 TextureSet 串行 bake，实时更新按钮进度文本 |
+| 8F: 与现有导出链路对齐 | ✅ | — | 烘焙后 Mesh Maps 直接可用于现有导出 / roundtrip 流程，无需额外适配 |
+| 8G: 最小验证脚本 | ✅ | `tests/probe_baking_api.py` | 已确认 API、参数名、常用 baker 与高模入口 |
+
+### 设计要点
+
+1. **不与 UE→SP 数据包强绑定**
+  - 第一阶段先做 SP 本地独立按钮，降低耦合与验证成本
+  - 后续若需要，再扩展为 UE 发送高模路径 / Bake Profile
+
+2. **优先最小可行 Bake Profile**
+  - 第一版默认仅覆盖高价值 mesh maps：`Normal`、`AO`、`Curvature`、`Position`、`Thickness`
+  - `CageMesh`、`BentNormals`、`Height` 留作扩展选项，不在第一版强制暴露
+
+3. **路径格式统一**
+  - `HipolyMesh` 需要传入 `file:///` URI 列表语义对应的值
+  - 当前 probe 已验证可从本地文件路径转换为 URI；正式实现需统一封装，避免 UI / 调用层重复处理
+
+4. **保持现有导出架构不变**
+  - bake 只负责生成 mesh maps
+  - 导出、roundtrip、材质创建逻辑仍复用现有 `sp_sync_export.py` / `sp_channel_map.py`
+
+### 预期文件变更范围
+
+| 文件 | 变更 |
+|------|------|
+| `sp_sync_ui.py` | 新增 High Poly Bake GroupBox（路径显示、Browse 按钮、Bake 按钮） |
+| `sp_sync.py` | 绑定 UI 事件，接入 SPBakeManager，项目关闭清理 |
+| `sp_sync_config.py` | 新增 `highpoly_mesh_path` 属性、save/load 持久化 |
+| `sp_bake.py` | 新增（~260 行）：SPBakeManager 类，baking 参数配置、baker 启用、逐 TextureSet 异步 bake 事件编排、进度 UI |
+| `sp_sync_ue.py` | Bug Fix：multicast_bind_address 改为 `0.0.0.0` 对齐 UE 配置 + 连接泄漏修复 |
+| `tests/probe_baking_api.py` | 已存在，用于持续校验 API 差异 |
+
+---
+
 ## 变更日志
 
 | 日期 | 版本 | 变更 |
@@ -368,3 +480,5 @@ UE `blueprint_get_size_x/y()` 返回的是运行时分辨率（受 `max_texture_
 | 2026-03-25 | 0.968 | Bug Fix 轮：BaseColor 导出黑色（srcMapName/srcChannel 格式）、AO srcMapName（"ao"→"ambientOcclusion"）、标准导出 metallic（roundtrip 自动检测 bypass）、Emissive BCO fallback 修复。185 测试通过 |
 | 2026-03-26 | 0.969 | 阶段六完成（M8 Texture Size Control）：`_compute_default_resolution()` + `_compute_export_size_log2()` + Clamp [128, 4096]。`max_resolution` 从 Dict 统一为 int（POT），全管线生效 |
 | 2026-03-26 | 0.970 | 阶段七完成（M9 Resolution Authority Separation）：`texture_size` 来源改为导出文件实际尺寸（PIL），修复 `blueprint_get_size_x/y()` 返回运行时分辨率问题，SP `project.create()` ValueError 修复。191 测试通过 |
+| 2026-04-04 | — | 阶段八规划完成（M10 High Poly Guided Mesh Map Baking）：补充 SP Baking API 调研结论，确认 `HipolyMesh` / `LowAsHigh` / `CageMesh` 等高模相关参数存在，规划 UI 按键选择高模 FBX 并自动烘焙 Normal/AO 等常用 Mesh Maps |
+| 2026-04-04 | 0.971 | 阶段八完成（M10 High Poly Guided Mesh Map Baking）：新增 `sp_bake.py`（SPBakeManager），UI 高模路径选择 + Bake 按钮，逐 TextureSet 异步 bake 事件编排，高模路径项目级持久化。同时修复 `sp_sync_ue.py` multicast_bind_address 不匹配导致 "No UE remote nodes discovered" 的连接问题 |

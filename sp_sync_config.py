@@ -7,6 +7,7 @@ class SPSyncConfig:
     """管理项目级配置的持久化和读取。"""
 
     _origin_export_path: str = ""
+    _highpoly_mesh_path: str = ""
 
     @property
     def origin_export_path(self) -> str:
@@ -15,6 +16,14 @@ class SPSyncConfig:
     @origin_export_path.setter
     def origin_export_path(self, value: str):
         self._origin_export_path = value
+
+    @property
+    def highpoly_mesh_path(self) -> str:
+        return self._highpoly_mesh_path
+
+    @highpoly_mesh_path.setter
+    def highpoly_mesh_path(self, value: str):
+        self._highpoly_mesh_path = value
 
     def save(self, ui):
         """将 UI 状态写入 SP 项目元数据。"""
@@ -25,6 +34,7 @@ class SPSyncConfig:
         metadata.set("mesh_scale", ui.mesh_scale.value())
         metadata.set("create_material", ui.create_material.isChecked())
         metadata.set("force_front_x_axis", ui.force_front_x_axis.isChecked())
+        metadata.set("highpoly_mesh_path", self._highpoly_mesh_path)
 
     def load(self, ui, sp_sync_ue):
         """从 SP 项目元数据读取配置，应用到 UI 和 ue_sync。返回 True 表示加载成功。"""
@@ -34,6 +44,13 @@ class SPSyncConfig:
         ui.file_path.setText(metadata.get("export_path"))
         self._origin_export_path = metadata.get("origin_export_path")
         key_list = metadata.list()
+
+        if "highpoly_mesh_path" in key_list:
+            self._highpoly_mesh_path = metadata.get("highpoly_mesh_path")
+            ui.highpoly_path.setText(self._highpoly_mesh_path)
+        else:
+            self._highpoly_mesh_path = ""
+            ui.highpoly_path.setText("")
 
         # UE 来源项目：通过 pending flag（新建）或 metadata（重新打开）检测
         from_ue = sp_receive._from_ue_pending or (

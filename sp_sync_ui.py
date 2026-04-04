@@ -118,7 +118,39 @@ class Ui_SPsync(object):
 
         self.verticalLayout_2.addWidget(self.groupBox_sync)
 
-        # ── 3. View Control ──
+        # ── 3. High Poly Bake ──
+        self.groupBox_bake = QGroupBox(self.unreal)
+        self.groupBox_bake.setObjectName(u"groupBox_bake")
+        self.verticalLayout_bake = QVBoxLayout(self.groupBox_bake)
+        self.verticalLayout_bake.setSpacing(5)
+        self.verticalLayout_bake.setContentsMargins(5, 5, 5, 5)
+
+        self.label_highpoly = QLabel(self.groupBox_bake)
+        self.label_highpoly.setObjectName(u"label_highpoly")
+        self.verticalLayout_bake.addWidget(self.label_highpoly)
+
+        self.horizontalLayout_bake_path = QHBoxLayout()
+        self.horizontalLayout_bake_path.setObjectName(u"horizontalLayout_bake_path")
+
+        self.highpoly_path = QLineEdit(self.groupBox_bake)
+        self.highpoly_path.setObjectName(u"highpoly_path")
+        self.highpoly_path.setReadOnly(True)
+        self.horizontalLayout_bake_path.addWidget(self.highpoly_path)
+
+        self.highpoly_select = QPushButton(self.groupBox_bake)
+        self.highpoly_select.setObjectName(u"highpoly_select")
+        self.horizontalLayout_bake_path.addWidget(self.highpoly_select)
+
+        self.verticalLayout_bake.addLayout(self.horizontalLayout_bake_path)
+
+        self.bake_highpoly_button = QPushButton(self.groupBox_bake)
+        self.bake_highpoly_button.setObjectName(u"bake_highpoly_button")
+        self.bake_highpoly_button.setMinimumSize(QSize(0, 40))
+        self.verticalLayout_bake.addWidget(self.bake_highpoly_button)
+
+        self.verticalLayout_2.addWidget(self.groupBox_bake)
+
+        # ── 4. View Control ──
         self.groupBox_view = QGroupBox(self.unreal)
         self.groupBox_view.setObjectName(u"groupBox_view")
         self.verticalLayout_view = QVBoxLayout(self.groupBox_view)
@@ -143,7 +175,7 @@ class Ui_SPsync(object):
         self.verticalSpacer_2 = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         self.verticalLayout_2.addItem(self.verticalSpacer_2)
 
-        # ── 4. Action Buttons (pinned to bottom) ──
+        # ── 5. Action Buttons (pinned to bottom) ──
         self.sync_mesh_button = QPushButton(self.unreal)
         self.sync_mesh_button.setObjectName(u"sync_mesh_button")
         self.verticalLayout_2.addWidget(self.sync_mesh_button)
@@ -197,6 +229,7 @@ class Ui_SPsync(object):
 
         self.groupBox_export.setTitle(QCoreApplication.translate("SPsync", u"Export Settings", None))
         self.groupBox_sync.setTitle(QCoreApplication.translate("SPsync", u"Sync Options", None))
+        self.groupBox_bake.setTitle(QCoreApplication.translate("SPsync", u"High Poly Bake", None))
         self.groupBox_view.setTitle(QCoreApplication.translate("SPsync", u"View Control", None))
 
         self.label.setText(QCoreApplication.translate("SPsync", u"Export Preset:", None))
@@ -207,6 +240,10 @@ class Ui_SPsync(object):
         self.create_material.setText(QCoreApplication.translate("SPsync", u"Create Materials", None))
         self.force_front_x_axis.setText(QCoreApplication.translate("SPsync", u"Force front X axis", None))
         self.label_2.setText(QCoreApplication.translate("SPsync", u"Scale:", None))
+        self.label_highpoly.setText(QCoreApplication.translate("SPsync", u"High Poly Mesh:", None))
+        self.highpoly_path.setPlaceholderText(QCoreApplication.translate("SPsync", u"Choose High Poly FBX / OBJ / USD...", None))
+        self.highpoly_select.setText(QCoreApplication.translate("SPsync", u"Browse...", None))
+        self.bake_highpoly_button.setText(QCoreApplication.translate("SPsync", u"Bake (HighPoly)", None))
 
         self.sync_view.setText(QCoreApplication.translate("SPsync", u"View Sync", None))
 

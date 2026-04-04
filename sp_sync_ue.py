@@ -84,7 +84,10 @@ class ue_sync_remote(QtCore.QObject):
         self._command_queue = queue.Queue()
         self._thread = None
         self._lock = threading.Lock()
-        self._remote_exec = remote_execution.RemoteExecution()
+        # 绑定地址必须与 UE 侧 RemoteExecutionMulticastBindAddress 一致（DefaultEngine.ini）
+        config = remote_execution.RemoteExecutionConfig()
+        config.multicast_bind_address = '0.0.0.0'
+        self._remote_exec = remote_execution.RemoteExecution(config)
         self._need_reconnect = False
 
     def _ensure_connection(self):
@@ -98,6 +101,11 @@ class ue_sync_remote(QtCore.QObject):
             time.sleep(self._reconnect_delay)
 
         if not self._remote_exec.has_command_connection():
+            # 先关闭残留的广播连接，防止 socket/线程泄漏
+            try:
+                self._remote_exec.stop()
+            except Exception:
+                pass
             self._remote_exec.start()
             # 等待节点发现（最多 5 秒）
             for _ in range(50):
