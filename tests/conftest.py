@@ -13,7 +13,7 @@ sys.path.insert(0, _root)
 # ---------------------------------------------------------------------------
 _sp_root = types.ModuleType("substance_painter")
 _sp_sub_names = [
-    "ui", "event", "project", "resource", "textureset",
+    "ui", "event", "project", "resource", "textureset", "baking",
     "layerstack", "export", "application",
 ]
 for _name in _sp_sub_names:

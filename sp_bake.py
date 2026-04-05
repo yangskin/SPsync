@@ -6,6 +6,7 @@ import substance_painter.baking
 import substance_painter.event
 import substance_painter.project
 import substance_painter.textureset
+import substance_painter.ui
 
 IsQt5 = substance_painter.application.version_info() < (10, 1, 0)
 
@@ -197,6 +198,20 @@ class SPBakeManager:
         else:
             self._ui.bake_highpoly_button.setText("Bake (HighPoly)")
 
+    def _restore_edition_mode(self):
+        if not substance_painter.project.is_open():
+            return
+
+        if not hasattr(substance_painter.ui, "switch_to_mode") or not hasattr(substance_painter.ui, "UIMode"):
+            return
+
+        try:
+            current_mode = substance_painter.ui.get_current_mode() if hasattr(substance_painter.ui, "get_current_mode") else None
+            if current_mode != substance_painter.ui.UIMode.Edition:
+                substance_painter.ui.switch_to_mode(substance_painter.ui.UIMode.Edition)
+        except Exception:
+            pass
+
     def _bake_next_texture_set(self):
         if not self._bake_queue:
             completed_text = ", ".join(self._completed_texture_sets) if self._completed_texture_sets else "None"
@@ -249,6 +264,7 @@ class SPBakeManager:
         self._bake_queue = []
         self._current_texture_set_name = ""
         self._set_bake_ui_state(False)
+        self._restore_edition_mode()
 
         if success:
             QtWidgets.QMessageBox.information(self._main_widget, "High Poly Bake", message)
