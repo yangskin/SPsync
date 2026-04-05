@@ -70,7 +70,7 @@ class SPSyncConfig:
             ui.force_front_x_axis.setChecked(val)
             sp_sync_ue.set_force_front_x_axis(val)
         else:
-            default_ffa = not from_ue
+            default_ffa = True
             ui.force_front_x_axis.setChecked(default_ffa)
             sp_sync_ue.set_force_front_x_axis(default_ffa)
 

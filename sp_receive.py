@@ -502,8 +502,10 @@ def _on_project_ready(state) -> None:
         _on_project_ready,
     )
 
-    # 持久化 from_ue 标记到项目 metadata
-    substance_painter.project.Metadata("sp_sync").set("from_ue", True)
+    # 持久化 UE 来源标记与回程朝向默认值。
+    metadata = substance_painter.project.Metadata("sp_sync")
+    metadata.set("from_ue", True)
+    metadata.set("force_front_x_axis", True)
     _from_ue_pending = False
 
     if _pending_ue_data is None:
